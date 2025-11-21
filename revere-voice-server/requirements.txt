@@ -1,0 +1,17 @@
+# Revere Enhanced Voice Server Requirements
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+websockets==12.0
+requests==2.31.0
+python-multipart==0.0.6
+
+# For future STT/TTS integration
+# RealtimeSTT==0.1.8
+# RealtimeTTS==0.3.2
+# torch>=2.0.0
+# torchaudio>=2.0.0
+# numpy>=1.24.0
+
+# Optional: For enhanced NLP
+# transformers>=4.30.0
+# openai>=1.0.0

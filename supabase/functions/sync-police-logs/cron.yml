@@ -1,0 +1,5 @@
+# Cron schedule for automatic daily police logs sync
+# Runs every day at 3:00 PM UTC (10:00 AM EST)
+
+- schedule: "0 15 * * *"
+  function: sync-police-logs
