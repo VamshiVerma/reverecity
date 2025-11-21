@@ -178,7 +178,7 @@ See the `supabase/migrations/` directory for SQL migration files.
 
 ## License
 
-This project is private and proprietary.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
