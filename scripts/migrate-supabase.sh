@@ -17,9 +17,7 @@ set -euo pipefail
 
 SUPABASE="${SUPABASE_CLI:-npx supabase}"
 
-if [[ -z "${NEW_PROJECT_REF:-}" ]]; then
-  read -rp "New Supabase project ref (from dashboard URL /project/<ref>): " NEW_PROJECT_REF
-fi
+NEW_PROJECT_REF="${NEW_PROJECT_REF:-ckwiryfnnguarcsgiuws}"
 
 echo "==> Logging in (opens browser / paste access token)"
 $SUPABASE login
