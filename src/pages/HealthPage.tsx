@@ -117,14 +117,11 @@ const HealthPage = () => {
             <CardTitle>Health Care Diversity by Gender</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video w-full">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src="https://datausa.io/profile/geo/revere-ma/health/health_care_diversity?viz=true" 
-                frameBorder="0" 
-                className="rounded-md"
-                title="Health Care Diversity Chart"
+            <div className="h-80">
+              <PieChart
+                data={healthCareGenderData}
+                colors={["#3F51B5", "#E91E63"]}
+                height={300}
               />
             </div>
             <div className="text-center mt-4 text-sm text-muted-foreground">
@@ -138,14 +135,12 @@ const HealthPage = () => {
             <CardTitle>Uninsured People and Insurance Types</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video w-full">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src="https://datausa.io/profile/geo/revere-ma/health/uninsured_people?viz=true" 
-                frameBorder="0"
-                className="rounded-md" 
-                title="Uninsured People Chart"
+            <div className="h-80">
+              <BarChart
+                data={healthCoverageData}
+                color="#F44336"
+                yAxisLabel="% of population"
+                height={300}
               />
             </div>
             <div className="text-center mt-4 text-sm text-muted-foreground">

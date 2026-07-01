@@ -4,6 +4,7 @@ import { Users, Globe, Percent } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatCard from "@/components/cards/StatCard";
 import { Card, CardContent } from "@/components/ui/card";
+import PieChart from "@/components/charts/PieChart";
 
 const DemographicsPage = () => {
   return (
@@ -48,15 +49,15 @@ const DemographicsPage = () => {
           
           <TabsContent value="citizenship" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Citizenship</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/demographics/citizenship?viz=true" 
-                title="Revere MA Citizenship Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <PieChart
+                data={[
+                  { name: "US Citizen", value: 74 },
+                  { name: "Non-Citizen", value: 26 }
+                ]}
+                colors={["#3F51B5", "#FF9800"]}
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">
@@ -80,15 +81,19 @@ const DemographicsPage = () => {
           
           <TabsContent value="race" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Race and Ethnicity</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/demographics/race_and_ethnicity?viz=true" 
-                title="Revere MA Race and Ethnicity Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <PieChart
+                data={[
+                  { name: "White (Non-Hispanic)", value: 44 },
+                  { name: "Hispanic", value: 37 },
+                  { name: "Asian", value: 6 },
+                  { name: "Black", value: 5 },
+                  { name: "Two or More", value: 6 },
+                  { name: "Other", value: 2 }
+                ]}
+                colors={["#2196F3", "#FF9800", "#4CAF50", "#9C27B0", "#F44336", "#607D8B"]}
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">
@@ -122,15 +127,15 @@ const DemographicsPage = () => {
           
           <TabsContent value="foreign" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Foreign-Born Population</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/demographics/foreign_born_population?viz=true" 
-                title="Revere MA Foreign-Born Population Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <PieChart
+                data={[
+                  { name: "Foreign-born", value: 41 },
+                  { name: "Native-born", value: 59 }
+                ]}
+                colors={["#00BCD4", "#CDDC39"]}
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">

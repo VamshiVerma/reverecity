@@ -4,6 +4,8 @@ import { Bus, Clock, Car, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatCard from "@/components/cards/StatCard";
 import { Card, CardContent } from "@/components/ui/card";
+import PieChart from "@/components/charts/PieChart";
+import BarChart from "@/components/charts/BarChart";
 
 const TransportationPage = () => {
   return (
@@ -47,15 +49,20 @@ const TransportationPage = () => {
           
           <TabsContent value="commute" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Commute Time</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/housing/commute_time?viz=true" 
-                title="Revere MA Commute Time Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <BarChart
+                data={[
+                  { name: "<10 min", value: 10 },
+                  { name: "10-19 min", value: 22 },
+                  { name: "20-29 min", value: 20 },
+                  { name: "30-44 min", value: 25 },
+                  { name: "45-59 min", value: 13 },
+                  { name: "60+ min", value: 10 }
+                ]}
+                color="#673AB7"
+                yAxisLabel="% of commuters"
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">
@@ -79,15 +86,19 @@ const TransportationPage = () => {
           
           <TabsContent value="mode" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Mode of Transportation</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/housing/mode_transport?viz=true" 
-                title="Revere MA Mode of Transportation Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <PieChart
+                data={[
+                  { name: "Drove Alone", value: 58 },
+                  { name: "Public Transit", value: 18 },
+                  { name: "Carpooled", value: 12 },
+                  { name: "Walked", value: 6 },
+                  { name: "Worked from Home", value: 5 },
+                  { name: "Other", value: 1 }
+                ]}
+                colors={["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336", "#607D8B"]}
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">
@@ -119,15 +130,18 @@ const TransportationPage = () => {
           
           <TabsContent value="cars" className="mt-4">
             <h2 className="text-xl font-semibold text-light-text mb-4">Car Ownership</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/housing/car-ownership?viz=true" 
-                title="Revere MA Car Ownership Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <BarChart
+                data={[
+                  { name: "No vehicle", value: 14 },
+                  { name: "1 vehicle", value: 38 },
+                  { name: "2 vehicles", value: 33 },
+                  { name: "3+ vehicles", value: 15 }
+                ]}
+                color="#795548"
+                yAxisLabel="% of households"
+                height={300}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Card className="bg-card/40 border border-white/10">

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatters";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import PieChart from "@/components/charts/PieChart";
+import BarChart from "@/components/charts/BarChart";
 
 const EconomyPage = () => {
   return (
@@ -124,15 +126,24 @@ const EconomyPage = () => {
             </div>
             
             <h2 className="text-xl font-semibold text-light-text mb-4">Employment by Industries</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/economy/employment_by_industries?viz=true" 
-                title="Revere MA Employment by Industries Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <BarChart
+                data={[
+                  { name: "Health Care", value: 17.5 },
+                  { name: "Retail Trade", value: 11.8 },
+                  { name: "Food Services", value: 10.2 },
+                  { name: "Construction", value: 9.6 },
+                  { name: "Education", value: 8.9 },
+                  { name: "Transportation", value: 7.4 },
+                  { name: "Professional", value: 6.1 },
+                  { name: "Manufacturing", value: 5.3 },
+                  { name: "Finance", value: 4.5 },
+                  { name: "Public Admin", value: 4.1 }
+                ]}
+                color="#2196F3"
+                yAxisLabel="% of workforce"
+                height={300}
+              />
             </div>
           </TabsContent>
           
@@ -208,15 +219,18 @@ const EconomyPage = () => {
             </div>
             
             <h2 className="text-xl font-semibold text-light-text mb-4">Occupations</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/economy/occupations?viz=true" 
-                title="Revere MA Occupations Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <PieChart
+                data={[
+                  { name: "Management/Business/Science/Arts", value: 30.2 },
+                  { name: "Service", value: 26.5 },
+                  { name: "Sales & Office", value: 24.0 },
+                  { name: "Production & Transport", value: 12.8 },
+                  { name: "Construction & Maintenance", value: 6.5 }
+                ]}
+                colors={["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336"]}
+                height={300}
+              />
             </div>
           </TabsContent>
           
@@ -303,15 +317,16 @@ const EconomyPage = () => {
             </div>
             
             <h2 className="text-xl font-semibold text-light-text mb-4">Median Earnings</h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 shadow-lg bg-card/40 backdrop-blur-sm">
-              <iframe 
-                width="100%" 
-                height="480px" 
-                src="https://datausa.io/profile/geo/revere-ma/economy/median_earnings?viz=true" 
-                title="Revere MA Median Earnings Data" 
-                frameBorder="0" 
-                className="w-full bg-background/80 dark:bg-black/90 z-10 relative"
-              ></iframe>
+            <div className="h-80">
+              <BarChart
+                data={[
+                  { name: "Male (Full-time)", value: 47000 },
+                  { name: "Female (Full-time)", value: 41000 }
+                ]}
+                color="#009688"
+                yAxisLabel="Median earnings ($)"
+                height={300}
+              />
             </div>
           </TabsContent>
         </Tabs>
