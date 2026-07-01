@@ -8,9 +8,15 @@ globalThis.fetch = fetch;
 
 dotenv.config();
 
-const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || 'AIzaSyDjm7WuesLoSLJlZ3wEU9Vmm-wKBq7GUkg';
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://kacadimifbgdqeegpcyx.supabase.co';
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthY2FkaW1pZmJnZHFlZWdwY3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjc2NzA2NTIsImV4cCI6MjA0MzI0NjY1Mn0.xaNjLjhC9aeKYxLOcfLVkFdq0jAX0NJRhCJw8hPNVWY';
+const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!GEMINI_API_KEY || !SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error(
+    'Missing config. Set VITE_GEMINI_API_KEY, VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
+  );
+}
 
 async function testVectorSearch() {
   console.log('🧪 Testing Budget Vector Search\n');

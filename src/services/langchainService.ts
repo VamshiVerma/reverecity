@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { realTimeDataService } from './realTimeDataService';
 import { budgetVectorService } from './budgetVectorService';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDjm7WuesLoSLJlZ3wEU9Vmm-wKBq7GUkg';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 if (!GEMINI_API_KEY || GEMINI_API_KEY === '') {
   console.error('VITE_GEMINI_API_KEY is not set!');
