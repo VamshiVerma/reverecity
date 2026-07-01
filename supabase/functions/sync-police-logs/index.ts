@@ -1,7 +1,6 @@
 // Supabase Edge Function - Daily Police Logs Sync
 // This runs automatically every day via cron to sync new police logs
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Scraper to discover available PDFs
@@ -19,33 +18,34 @@ async function discoverAvailableLogs() {
 
   const markdown = await response.text();
 
-  // Extract all log links
-  const linkRegex = /https:\/\/reverepolice\.org\/(\d{4})\/(\d{2})\/public-log-redacted-([\d\-am]+)-to-([\d\-am]+)\//g;
+  // The Revere PD site now publishes daily "media logs" as PDFs on their CDN,
+  // e.g. https://files.aptuitivcdn.com/.../media-log/media-log-040224_redacted.pdf
+  // where 040224 = MM DD YY (April 2, 2024).
+  const linkRegex = /https:\/\/[^\s"'()]*media-log-(\d{6})_redacted\.pdf/gi;
   const matches = [...markdown.matchAll(linkRegex)];
 
   const logs = [];
   const seenUrls = new Set();
 
   for (const match of matches) {
-    const [, year, month, startStr, endStr] = match;
+    const pdfUrl = match[0];
+    const digits = match[1]; // MMDDYY
 
-    const startDate = parseLogDate(startStr);
-    const endDate = parseLogDate(endStr);
+    const month = parseInt(digits.slice(0, 2), 10);
+    const day = parseInt(digits.slice(2, 4), 10);
+    const year = parseInt(digits.slice(4, 6), 10) + 2000;
+    if (!month || !day) continue;
 
-    if (!startDate || !endDate) continue;
-
-    const dateRangeStr = `${startStr}-to-${endStr}`;
-    const pdfUrl = `https://reverepolice.org/wp-content/uploads/${year}/${month}/Public-Log-Redacted-${dateRangeStr}.pdf`;
+    const startDate = new Date(year, month - 1, day);
+    // Each PDF covers a single day; endDate is the next day so the
+    // sync-status day-marking loop records exactly this date.
+    const endDate = new Date(year, month - 1, day + 1);
 
     if (seenUrls.has(pdfUrl)) continue;
     seenUrls.add(pdfUrl);
 
-    logs.push({
-      startDate,
-      endDate,
-      pdfUrl,
-      dateRangeStr: `${startStr} to ${endStr}`
-    });
+    const dateRangeStr = startDate.toISOString().split('T')[0];
+    logs.push({ startDate, endDate, pdfUrl, dateRangeStr });
   }
 
   console.log(`[SYNC] Discovered ${logs.length} police logs`);
@@ -217,7 +217,7 @@ async function syncDiscoveredLog(supabase: any, log: any) {
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   try {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

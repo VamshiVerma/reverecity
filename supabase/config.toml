@@ -1,7 +1,7 @@
 
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "dslaxzbzsdzxjcsdbruf"
+project_id = "ckwiryfnnguarcsgiuws"
 
 [api]
 enabled = true
