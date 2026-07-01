@@ -8,7 +8,7 @@ globalThis.fetch = fetch;
 
 dotenv.config();
 
-const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
+const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || 'AIzaSyDjm7WuesLoSLJlZ3wEU9Vmm-wKBq7GUkg';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
