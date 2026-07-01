@@ -218,7 +218,7 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Monthly Overview (2025)
+              Monthly Overview{data.monthlyTrends?.[0]?.month ? ` (${data.monthlyTrends[0].month.split(' ').pop()})` : ''}
             </CardTitle>
             <CardDescription>Monthly activity and daily averages</CardDescription>
           </CardHeader>

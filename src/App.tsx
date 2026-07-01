@@ -18,7 +18,6 @@ import EconomyPage from "./pages/EconomyPage";
 import TransportationPage from "./pages/TransportationPage";
 import CrimePage from "./pages/CrimePage";
 import HealthPage from "./pages/HealthPage";
-import AIInsightsPage from "./pages/AIInsightsPage";
 import EducationPage from "./pages/EducationPage";
 import MBTAPage from "./pages/MBTAPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
@@ -42,7 +41,6 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/budget" element={<BudgetPage />} />
                 <Route path="/revenue" element={<RevenuePage />} />
-                <Route path="/ai-insights" element={<AIInsightsPage />} />
                 <Route path="/mbta" element={<MBTAPage />} />
                 <Route path="/housing" element={<HousingPage />} />
                 <Route path="/demographics" element={<DemographicsPage />} />

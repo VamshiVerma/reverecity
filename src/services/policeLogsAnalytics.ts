@@ -111,15 +111,12 @@ export class PoliceLogsAnalyticsService {
    * Get weekly trends for last 12 weeks
    */
   static async getWeeklyTrends() {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - (12 * 7)); // 12 weeks ago
-
+    // Pull all logs and take the 12 most recent weeks that actually have data.
+    // The source only publishes a limited window, which may not be "this week",
+    // so filtering to the last 12 calendar weeks would show nothing.
     const { data, error } = await supabase
       .from('police_logs')
-      .select('log_date, action_category, call_type_category')
-      .gte('log_date', startDate.toISOString().split('T')[0])
-      .lte('log_date', endDate.toISOString().split('T')[0]);
+      .select('log_date, action_category, call_type_category');
 
     if (error || !data) {
       console.error('Error fetching weekly trends:', error);
@@ -186,18 +183,23 @@ export class PoliceLogsAnalyticsService {
   }
 
   /**
-   * Get monthly trends for all of 2025
+   * Get monthly trends for the most recent year that has data
    */
   static async getMonthlyTrends() {
     const { data, error } = await supabase
       .from('police_logs')
-      .select('log_date')
-      .gte('log_date', '2025-01-01');
+      .select('log_date');
 
     if (error || !data) {
       console.error('Error fetching monthly trends:', error);
       return [];
     }
+
+    // Scope to the latest year present in the data (instead of a hardcoded year)
+    const latestYear = data.reduce((max, log) => {
+      const y = new Date(log.log_date + 'T12:00:00').getFullYear();
+      return y > max ? y : max;
+    }, 0);
 
     // Group by month - use YYYY-MM format for proper sorting
     const monthlyData: {
@@ -211,6 +213,7 @@ export class PoliceLogsAnalyticsService {
     data.forEach(log => {
       const date = new Date(log.log_date + 'T12:00:00');
       const year = date.getFullYear();
+      if (year !== latestYear) return; // only the most recent year with data
       const month = date.getMonth();
 
       // Use YYYY-MM as key for proper sorting

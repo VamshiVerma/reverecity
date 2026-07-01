@@ -86,6 +86,52 @@ async function findUnsyncedLogs(supabase: any, allLogs: any[]) {
   return unsynced;
 }
 
+// Derive a normalized call-type category from the entry text
+function categorizeCallType(text: string): string {
+  const reason = (text || '').toUpperCase();
+  if (reason.includes('TRAFFIC') || reason.includes('MOTOR VEHICLE') || reason.includes('PARKING')) return 'TRAFFIC';
+  if (reason.includes('MEDICAL') || reason.includes('AMBULANCE') || reason.includes('OVERDOSE')) return 'MEDICAL';
+  if (reason.includes('FIRE') || reason.includes('SMOKE') || reason.includes('ALARM')) return 'FIRE_SAFETY';
+  if (reason.includes('DISTURBANCE') || reason.includes('NOISE') || reason.includes('FIGHT')) return 'DISTURBANCE';
+  if (reason.includes('DOMESTIC')) return 'DOMESTIC';
+  if (reason.includes('LARCENY') || reason.includes('THEFT') || reason.includes('ROBBERY') ||
+      reason.includes('BURGLARY') || reason.includes('BREAKING')) return 'THEFT_PROPERTY';
+  if (reason.includes('ASSIST') || reason.includes('WELL BEING') || reason.includes('CHECK')) return 'ASSIST_SERVICE';
+  if (reason.includes('SUSPICIOUS')) return 'SUSPICIOUS';
+  if (reason.includes('911')) return 'EMERGENCY_CALL';
+  if (reason.includes('MISSING')) return 'MISSING_PERSON';
+  return 'OTHER';
+}
+
+function categorizeAction(action: string): string {
+  const act = (action || '').toUpperCase();
+  if (act.includes('NO ACTION')) return 'NO_ACTION';
+  if (act.includes('SERVICES RENDERED')) return 'SERVICES_RENDERED';
+  if (act.includes('REPORT')) return 'REPORT';
+  if (act.includes('WARNING')) return 'WARNING';
+  if (act.includes('ARREST')) return 'ARREST';
+  if (act.includes('SUMMONS')) return 'SUMMONS';
+  if (act.includes('REFERRED') || act.includes('TRANSFER')) return 'REFERRED';
+  if (act.includes('GONE ON ARRIVAL')) return 'GONE_ON_ARRIVAL';
+  if (act.includes('UNABLE TO LOCATE')) return 'UNABLE_TO_LOCATE';
+  if (act.includes('PROTECTIVE CUSTODY')) return 'PROTECTIVE_CUSTODY';
+  if (act.includes('UNFOUNDED')) return 'UNFOUNDED';
+  if (act.includes('INVESTIGATED')) return 'INVESTIGATED';
+  return 'OTHER';
+}
+
+function extractLocationCode(location: string | null): string | null {
+  if (!location) return null;
+  const match = location.match(/\[(REV\s*\d*)\]/);
+  return match ? match[1].trim() : null;
+}
+
+function extractStreetName(location: string | null): string | null {
+  if (!location) return null;
+  const street = location.replace(/\[REV\s*\d*\]\s*/, '').replace(/\s*\+\s*/g, ' + ').trim();
+  return street || null;
+}
+
 // Parse markdown log entries
 function parseLogEntries(markdown: string, logDate: Date, sourceUrl: string) {
   const entries = [];
@@ -119,6 +165,7 @@ function parseLogEntries(markdown: string, logDate: Date, sourceUrl: string) {
       }
 
       const [, callNumber, time24h, callReason, action] = entryMatch;
+      const combined = `${callReason} ${action}`;
 
       currentEntry = {
         call_number: callNumber,
@@ -126,15 +173,23 @@ function parseLogEntries(markdown: string, logDate: Date, sourceUrl: string) {
         time_24h: time24h,
         timestamp: buildTimestamp(currentDate, time24h).toISOString(),
         call_reason: callReason.trim(),
+        call_type_category: categorizeCallType(combined),
         action: action.trim(),
+        action_category: categorizeAction(action),
+        location_code: null,
         location_address: null,
+        location_street: null,
         raw_entry: trimmed,
         source_url: sourceUrl
       };
-    } else if (trimmed.match(/^Location\/Address:/i) && currentEntry) {
-      const locationMatch = trimmed.match(/^Location\/Address:\s*(.+)/i);
+    } else if (currentEntry) {
+      // Location can appear as "Location/Address:", "Location:", or "Vicinity of:"
+      const locationMatch = trimmed.match(/^(?:Location\/Address|Location|Vicinity of):\s*(.+)/i);
       if (locationMatch) {
-        currentEntry.location_address = locationMatch[1].trim();
+        const loc = locationMatch[1].trim();
+        currentEntry.location_address = loc;
+        currentEntry.location_code = extractLocationCode(loc);
+        currentEntry.location_street = extractStreetName(loc);
       }
     }
   }
