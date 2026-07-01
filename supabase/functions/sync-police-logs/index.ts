@@ -1,7 +1,6 @@
 // Supabase Edge Function - Daily Police Logs Sync
 // This runs automatically every day via cron to sync new police logs
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Scraper to discover available PDFs
@@ -217,7 +216,7 @@ async function syncDiscoveredLog(supabase: any, log: any) {
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   try {
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
