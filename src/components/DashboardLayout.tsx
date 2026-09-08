@@ -45,13 +45,15 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
       <div className="flex flex-col flex-1 min-h-screen">
         <Header toggleSidebar={toggleSidebar} pageTitle={pageTitle} />
         <AlertSystem />
-        <main className="flex-1 p-4 md:p-6">
-          {children}
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <div key={pageTitle} className="mx-auto w-full max-w-7xl animate-rise space-y-6">
+            {children}
+          </div>
         </main>
-        <footer className="p-4 border-t border-gray-800 text-center text-sm text-muted-foreground">
-          <div className="max-w-7xl mx-auto">
-            <p>© {new Date().getFullYear()} City of Revere, Massachusetts. Data from public sources.</p>
-            <p className="mt-1">Last updated: May 8, 2025</p>
+        <footer className="border-t border-border/60 px-4 py-6 md:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-xs text-muted-foreground sm:flex-row">
+            <p>© {new Date().getFullYear()} City of Revere, Massachusetts</p>
+            <p className="text-muted-foreground/70">Built on public data · Updated automatically</p>
           </div>
         </footer>
       </div>

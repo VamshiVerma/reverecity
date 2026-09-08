@@ -63,11 +63,23 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				highlight: "#BB86FC",
-				"highlight-secondary": "#03DAC6",
-				"dark-bg": "#121212",
-				"card-bg": "#2D2D2D",
-				"light-text": "#E0E0E0"
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))',
+				highlight: "hsl(199 91% 58%)",
+				"highlight-secondary": "hsl(24 94% 62%)",
+				"dark-bg": "hsl(222 33% 6.5%)",
+				"card-bg": "hsl(221 26% 10%)",
+				"light-text": "hsl(213 31% 95%)"
+			},
+			fontFamily: {
+				sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				display: ['Sora', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+			},
+			boxShadow: {
+				'soft': '0 12px 30px -12px hsl(222 60% 2% / 0.7)',
+				'lift': '0 20px 44px -16px hsl(222 60% 2% / 0.8)',
+				'glow': '0 0 0 1px hsl(199 91% 56% / 0.25), 0 8px 30px -8px hsl(199 91% 56% / 0.35)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
