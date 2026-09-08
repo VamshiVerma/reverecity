@@ -183,10 +183,17 @@ const Index = () => {
   return (
     <DashboardLayout pageTitle="City Overview">
       {/* City Header with Key Stats */}
-      <div className="relative mb-8 rounded-xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/90 via-purple-600/90 to-sky-600/90 opacity-90"></div>
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/30 to-gray-700/30 mix-blend-overlay"></div>
-        
+      <div className="relative mb-8 overflow-hidden rounded-2xl border border-white/10 shadow-lift">
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(212_65%_20%)] via-[hsl(216_55%_12%)] to-[hsl(222_45%_8%)]"></div>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(75% 130% at 12% -10%, hsl(199 91% 56% / 0.40), transparent 58%), radial-gradient(60% 110% at 105% 110%, hsl(24 94% 60% / 0.18), transparent 55%)",
+          }}
+        ></div>
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
+
         <div className="relative p-6 md:p-8">
           <div className="mb-6">
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Revere, Massachusetts</h1>
@@ -256,8 +263,11 @@ const Index = () => {
         <TabsContent value="overview" className="space-y-8">
           {/* Key Departments Section - Using compact cards */}
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Key City Departments</h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="eyebrow mb-1">Explore</p>
+                <h2 className="font-display text-2xl font-semibold tracking-tight">Key City Departments</h2>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -535,7 +545,7 @@ const Index = () => {
       {/* Top Categories */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">All Categories</h2>
+          <h2 className="font-display text-2xl font-semibold tracking-tight">All Categories</h2>
           <Badge variant="outline" className="text-xs">
             12 departments
           </Badge>

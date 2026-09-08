@@ -4,7 +4,6 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import AlertSystem from "./AlertSystem";
 import VisitorTracker from "./VisitorTracker";
-import RealDataChatBot from "./ChatBot/RealDataChatBot";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardLayoutProps {
@@ -57,7 +56,6 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
           </div>
         </footer>
       </div>
-      <RealDataChatBot currentPage={pageTitle?.toLowerCase() || 'dashboard'} />
     </div>
   );
 };

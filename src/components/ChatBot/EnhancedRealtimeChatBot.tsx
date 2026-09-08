@@ -495,55 +495,47 @@ The data services will be back online soon!`,
       {/* Main Chat Toggle Button */}
       <Button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 shadow-[0_20px_50px_rgba(59,130,246,0.5)] hover:shadow-[0_25px_60px_rgba(59,130,246,0.6)] hover:scale-110 transition-all duration-500 backdrop-blur-sm group ${className} ${isOpen ? 'hidden' : ''}`}
+        className={`fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-highlight to-[hsl(199_91%_44%)] shadow-glow hover:brightness-110 hover:scale-105 transition-all duration-300 backdrop-blur-sm group ${className} ${isOpen ? 'hidden' : ''}`}
         size="icon"
       >
         <div className="relative">
-          <div className="absolute inset-0 bg-white/20 rounded-full animate-ping group-hover:animate-none"></div>
-          <MessageSquare className="h-8 w-8 text-white relative z-10 group-hover:scale-110 transition-transform duration-300" />
+          <MessageSquare className="h-6 w-6 text-primary-foreground relative z-10 group-hover:scale-110 transition-transform duration-300" />
           {currentMode === 'voice' && isListening && (
-            <>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping" />
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full" />
-            </>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-highlight-secondary rounded-full ring-2 ring-popover" />
           )}
         </div>
       </Button>
 
       {/* Enhanced Chat Interface */}
       {isOpen && (
-        <div className={`fixed z-50 bg-card dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 ${
+        <div className={`fixed z-50 bg-popover/95 backdrop-blur-xl shadow-lift border border-white/10 flex flex-col overflow-hidden transition-all duration-300 ${
           isMaximized
             ? 'inset-0 w-full h-full rounded-none'
             : `bottom-6 right-6 w-96 max-w-[90vw] rounded-2xl ${isMinimized ? 'h-auto' : 'h-[600px] max-h-[80vh]'}`
         }`}>
           {/* Header - Compact Design */}
-          <div className="p-3 bg-card dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-3 bg-white/[0.02] border-b border-white/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg blur-sm opacity-50"></div>
-                  <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 rounded-lg shadow-md">
-                    <Zap className="h-4 w-4 text-white" />
+                  <div className="relative bg-gradient-to-br from-highlight to-[hsl(199_91%_44%)] p-1.5 rounded-xl shadow-glow">
+                    <Zap className="h-4 w-4 text-primary-foreground" />
                     {isListening && (
-                      <>
-                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-                      </>
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-highlight-secondary rounded-full ring-2 ring-popover" />
                     )}
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-foreground text-sm bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">AI Assistant</h3>
+                  <h3 className="font-display font-semibold text-foreground text-sm">AI Assistant</h3>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                     <Badge
                       variant={currentMode === 'voice' ? 'default' : 'secondary'}
-                      className={`text-[10px] font-semibold shadow-sm py-0 px-1.5 h-4 ${currentMode === 'voice' ? 'bg-gradient-to-r from-blue-500 to-purple-600 border-0' : ''}`}
+                      className={`text-[10px] font-semibold py-0 px-1.5 h-4 ${currentMode === 'voice' ? 'bg-highlight/15 text-highlight border border-highlight/25' : ''}`}
                     >
                       {currentMode === 'voice' ? '🎙️ Voice' : '✏️ Text'}
                     </Badge>
                     {currentMode === 'voice' && speechSupported && (
-                      <Badge variant="outline" className="text-[10px] text-green-600 border-green-300 bg-green-50/50 font-semibold py-0 px-1.5 h-4">
+                      <Badge variant="outline" className="text-[10px] text-highlight border-highlight/30 bg-highlight/10 font-semibold py-0 px-1.5 h-4">
                         ✅ Ready
                       </Badge>
                     )}
@@ -556,7 +548,7 @@ The data services will be back online soon!`,
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="h-6 w-6 p-0 hover:bg-white/50 transition-colors"
+                  className="h-6 w-6 p-0 hover:bg-white/10 transition-colors"
                   title={isMinimized ? "Expand" : "Minimize"}
                 >
                   {isMinimized ? (
@@ -574,7 +566,7 @@ The data services will be back online soon!`,
                       setIsMinimized(false);
                     }
                   }}
-                  className="h-6 w-6 p-0 hover:bg-white/50 transition-colors"
+                  className="h-6 w-6 p-0 hover:bg-white/10 transition-colors"
                   title={isMaximized ? "Restore" : "Maximize"}
                 >
                   <Maximize2 className="h-3 w-3" />
@@ -583,7 +575,7 @@ The data services will be back online soon!`,
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsOpen(false)}
-                  className="h-6 w-6 p-0 hover:bg-white/50 transition-colors"
+                  className="h-6 w-6 p-0 hover:bg-white/10 transition-colors"
                   title="Close"
                 >
                   <X className="h-3 w-3" />
@@ -593,51 +585,51 @@ The data services will be back online soon!`,
 
             {/* Voice Visualizer - Compact Design */}
             {currentMode === 'voice' && !isMinimized && (
-              <div className="mt-2 p-2.5 bg-gradient-to-br from-muted/60 to-blue-50/40 dark:to-blue-950/40 rounded-xl backdrop-blur-sm border border-border shadow-sm">
+              <div className="mt-2 p-2.5 bg-white/[0.03] rounded-xl backdrop-blur-sm border border-white/10 shadow-sm">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Waves className="w-3 h-3 text-blue-600" />
+                    <Waves className="w-3 h-3 text-highlight" />
                     Voice
                   </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isListening ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400' : 'bg-muted text-muted-foreground'}`}>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isListening ? 'bg-highlight/15 text-highlight' : 'bg-white/[0.04] text-muted-foreground'}`}>
                     {isListening ? '🔴 Live' : 'Standby'}
                   </span>
                 </div>
 
                 {/* Compact Animated Waveform */}
-                <div className="h-8 bg-gradient-to-r from-blue-100/50 via-purple-100/50 to-pink-100/50 dark:from-blue-950/50 dark:via-purple-950/50 dark:to-pink-950/50 rounded-lg flex items-center justify-center overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-pulse"></div>
+                <div className="h-8 bg-white/[0.03] border border-white/10 rounded-lg flex items-center justify-center overflow-hidden relative">
+                  <div className="absolute inset-0 bg-highlight/5 animate-pulse"></div>
                   {isListening ? (
                     <div className="flex items-center gap-1 relative z-10">
-                      <div className="w-1 h-4 bg-gradient-to-t from-red-500 to-pink-500 rounded-full animate-pulse shadow-sm" style={{animationDelay: '0ms', animationDuration: '0.8s'}}></div>
-                      <div className="w-1 h-6 bg-gradient-to-t from-red-600 to-pink-600 rounded-full animate-pulse shadow-sm" style={{animationDelay: '100ms', animationDuration: '0.9s'}}></div>
-                      <div className="w-1 h-5 bg-gradient-to-t from-red-500 to-pink-500 rounded-full animate-pulse shadow-sm" style={{animationDelay: '200ms', animationDuration: '1s'}}></div>
-                      <div className="w-1 h-7 bg-gradient-to-t from-red-600 to-pink-600 rounded-full animate-pulse shadow-sm" style={{animationDelay: '300ms', animationDuration: '0.85s'}}></div>
-                      <div className="w-1 h-5 bg-gradient-to-t from-red-500 to-pink-500 rounded-full animate-pulse shadow-sm" style={{animationDelay: '400ms', animationDuration: '0.95s'}}></div>
+                      <div className="w-1 h-4 bg-highlight rounded-full animate-pulse shadow-sm" style={{animationDelay: '0ms', animationDuration: '0.8s'}}></div>
+                      <div className="w-1 h-6 bg-highlight rounded-full animate-pulse shadow-sm" style={{animationDelay: '100ms', animationDuration: '0.9s'}}></div>
+                      <div className="w-1 h-5 bg-highlight rounded-full animate-pulse shadow-sm" style={{animationDelay: '200ms', animationDuration: '1s'}}></div>
+                      <div className="w-1 h-7 bg-highlight rounded-full animate-pulse shadow-sm" style={{animationDelay: '300ms', animationDuration: '0.85s'}}></div>
+                      <div className="w-1 h-5 bg-highlight rounded-full animate-pulse shadow-sm" style={{animationDelay: '400ms', animationDuration: '0.95s'}}></div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 relative z-10">
-                      <div className="w-1 h-3 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-3 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-3 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-3 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-3 bg-gray-300 rounded-full"></div>
+                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
+                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
+                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
+                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
+                      <div className="w-1 h-3 bg-white/20 rounded-full"></div>
                     </div>
                   )}
                 </div>
 
                 {/* Compact transcription preview */}
                 {(interimTranscript || finalTranscript) && (
-                  <div className="mt-1.5 p-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                  <div className="mt-1.5 p-2 bg-white/[0.04] rounded-lg border border-highlight/25">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${interimTranscript ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
-                      <span className="text-[10px] text-blue-700 dark:text-blue-400 uppercase tracking-wide font-bold">
+                      <div className={`w-1.5 h-1.5 rounded-full ${interimTranscript ? 'bg-highlight animate-pulse' : 'bg-highlight-secondary'}`}></div>
+                      <span className="text-[10px] text-highlight uppercase tracking-wide font-bold">
                         {interimTranscript ? 'Speaking...' : 'Done'}
                       </span>
                     </div>
                     <div className="font-medium text-xs text-foreground line-clamp-2">
                       {finalTranscript && <span className="opacity-70">{finalTranscript} </span>}
-                      {interimTranscript && <span className="text-blue-900 font-bold">{interimTranscript}</span>}
+                      {interimTranscript && <span className="text-foreground font-bold">{interimTranscript}</span>}
                     </div>
                   </div>
                 )}
@@ -655,10 +647,10 @@ The data services will be back online soon!`,
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-2xl p-3 shadow-lg transition-all duration-300 hover:shadow-xl ${
+                      className={`max-w-[80%] rounded-xl p-3 transition-all duration-300 ${
                         message.role === 'user'
-                          ? 'bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white'
-                          : 'bg-card dark:bg-gray-800 text-foreground border border-border backdrop-blur-sm'
+                          ? 'bg-highlight/15 border border-highlight/25 text-foreground'
+                          : 'bg-white/[0.04] border border-white/10 text-foreground backdrop-blur-sm'
                       }`}
                     >
                       {message.role === 'assistant' ? (
@@ -732,21 +724,18 @@ The data services will be back online soon!`,
                 {/* Real-time voice transcription display */}
                 {currentMode === 'voice' && isListening && interimTranscript && (
                   <div className="flex justify-end animate-in slide-in-from-right duration-300">
-                    <div className="max-w-[80%] rounded-2xl p-4 bg-gradient-to-br from-blue-500/60 via-purple-500/50 to-pink-500/60 text-white border-2 border-white/30 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 animate-pulse"></div>
+                    <div className="max-w-[80%] rounded-xl p-4 bg-highlight/15 text-foreground border border-highlight/30 shadow-glow backdrop-blur-xl relative overflow-hidden">
+                      <div className="absolute inset-0 bg-highlight/5 animate-pulse"></div>
                       <div className="relative z-10">
-                        <div className="text-xs text-white/90 uppercase tracking-wide mb-2 flex items-center gap-2 font-bold">
-                          <div className="relative">
-                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping absolute"></div>
-                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-                          </div>
+                        <div className="text-xs text-highlight uppercase tracking-wide mb-2 flex items-center gap-2 font-bold">
+                          <span className="w-2.5 h-2.5 bg-highlight-secondary rounded-full"></span>
                           Speaking...
                         </div>
                         <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                           {finalTranscript && <span className="opacity-70">{finalTranscript} </span>}
-                          <span className="font-bold text-white">{interimTranscript}</span>
+                          <span className="font-bold text-foreground">{interimTranscript}</span>
                         </div>
-                        <div className="mt-2 text-xs opacity-80 flex items-center gap-1.5">
+                        <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
                           <Activity className="w-3 h-3" />
                           Live transcription • Real-time
                         </div>
@@ -757,17 +746,17 @@ The data services will be back online soon!`,
 
                 {isLoading && (
                   <div className="flex justify-start chat-message-enter">
-                    <div className="glass-card rounded-2xl p-4 shadow-lg">
+                    <div className="bg-white/[0.04] border border-white/10 backdrop-blur-sm rounded-xl p-4 shadow-lg">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                          <div className="w-8 h-8 border-2 border-highlight/20 border-t-highlight rounded-full animate-spin"></div>
                         </div>
                         <div>
-                          <div className="text-sm font-semibold gradient-text">AI is thinking...</div>
+                          <div className="text-sm font-semibold text-foreground">AI is thinking...</div>
                           <div className="flex gap-1 mt-1">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full typing-dot"></div>
-                            <div className="w-2 h-2 bg-purple-500 rounded-full typing-dot"></div>
-                            <div className="w-2 h-2 bg-pink-500 rounded-full typing-dot"></div>
+                            <div className="w-2 h-2 bg-highlight rounded-full typing-dot"></div>
+                            <div className="w-2 h-2 bg-highlight rounded-full typing-dot"></div>
+                            <div className="w-2 h-2 bg-highlight rounded-full typing-dot"></div>
                           </div>
                         </div>
                       </div>
@@ -781,14 +770,14 @@ The data services will be back online soon!`,
 
           {/* Enhanced Input Area */}
           {!isMinimized && (
-            <div className="p-4 border-t border-border bg-card dark:bg-gray-800">
+            <div className="p-4 border-t border-white/10 bg-white/[0.02]">
               {/* Quick Actions - Always show */}
               <div className="mb-3">
                 <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => handleQuickAction('weather')}
                       disabled={isLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-full text-xs text-foreground transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:border-highlight/40 border border-white/10 rounded-full text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Cloud className="h-3.5 w-3.5" />
                       Weather
@@ -796,7 +785,7 @@ The data services will be back online soon!`,
                     <button
                       onClick={() => handleQuickAction('mbta')}
                       disabled={isLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-full text-xs text-foreground transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:border-highlight/40 border border-white/10 rounded-full text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Train className="h-3.5 w-3.5" />
                       Transit
@@ -804,7 +793,7 @@ The data services will be back online soon!`,
                     <button
                       onClick={() => handleQuickAction('demographics')}
                       disabled={isLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded-full text-xs text-foreground transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:border-highlight/40 border border-white/10 rounded-full text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Users className="h-3.5 w-3.5" />
                       Demographics
@@ -825,7 +814,7 @@ The data services will be back online soon!`,
                     }}
                     placeholder={isListening ? "Listening..." : "Type a message..."}
                     disabled={isLoading}
-                    className="bg-background border-border focus:border-blue-500 h-11 pr-20"
+                    className="bg-white/[0.04] border-white/10 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-highlight/50 h-11 pr-20"
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                     <Button
@@ -853,7 +842,7 @@ The data services will be back online soon!`,
                       disabled={isLoading}
                       variant="ghost"
                       size="sm"
-                      className={`h-7 w-7 p-0 ${isListening ? 'text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      className={`h-7 w-7 p-0 rounded-lg ${isListening ? 'text-highlight-secondary hover:brightness-110 hover:bg-white/10' : 'text-muted-foreground hover:text-foreground hover:bg-white/10'}`}
                     >
                       {isListening ? <StopCircle className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </Button>
@@ -862,7 +851,7 @@ The data services will be back online soon!`,
                       disabled={(!currentMessage.trim() && !transcript.trim()) || isLoading || isListening}
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:text-gray-400"
+                      className="h-7 w-7 p-0 rounded-lg bg-highlight text-primary-foreground hover:brightness-110 hover:bg-highlight disabled:opacity-40 disabled:bg-transparent disabled:text-muted-foreground"
                     >
                       <Send className="h-4 w-4" />
                     </Button>
