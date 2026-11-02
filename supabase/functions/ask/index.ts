@@ -140,7 +140,7 @@ Answer using ONLY the CONTEXT provided. Be warm, plain-spoken and specific: give
 async function llm(context: string, question: string, history: Msg[]): Promise<{ text: string; model: string } | null> {
   const user = `CONTEXT:\n${context}\n\nQUESTION: ${question}`;
   const hist = history.slice(-6);
-  const gem = Deno.env.get("GEMINI_API_KEY"), ant = Deno.env.get("ANTHROPIC_API_KEY"), oai = Deno.env.get("OPENAI_API_KEY");
+  const gem = Deno.env.get("GEMINI_API_KEY"), ant = Deno.env.get("ANTHROPIC_API_KEY"), oai = Deno.env.get("OPENAI_API_KEY"), groq = Deno.env.get("GROQ_API_KEY");
   try {
     if (ant) {
       for (const model of ["claude-haiku-5-5", "claude-haiku-4-5"]) {
@@ -151,6 +151,13 @@ async function llm(context: string, question: string, history: Msg[]): Promise<{
         });
         if (r.ok) { const j = await r.json(); return { text: j.content?.map((c: any) => c.text).join("") ?? "", model }; }
       }
+    }
+    if (groq) {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST", headers: { Authorization: `Bearer ${groq}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: "llama-3.3-70b-versatile", temperature: 0.3, max_tokens: 900, messages: [{ role: "system", content: SYSTEM }, ...hist, { role: "user", content: user }] }),
+      });
+      if (r.ok) { const j = await r.json(); return { text: j.choices?.[0]?.message?.content ?? "", model: "llama-3.3-70b (Groq)" }; }
     }
     if (gem) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gem}`, {

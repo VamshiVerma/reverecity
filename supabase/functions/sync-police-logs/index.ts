@@ -220,6 +220,13 @@ Deno.serve(async (req) => {
     for (const log of todo) {
       try {
         const md = await fetchMarkdown(log.pdfUrl);
+        // Archive the original PDF + extracted text: the PD removes old logs from its site.
+        const name = log.pdfUrl.split("/").pop()!;
+        try {
+          const pdf = await fetch(log.pdfUrl);
+          if (pdf.ok) await supabase.storage.from("police-log-archive").upload(`pdf/${name}`, await pdf.arrayBuffer(), { contentType: "application/pdf", upsert: true });
+          await supabase.storage.from("police-log-archive").upload(`text/${name.replace(/\.pdf$/i, ".md")}`, new Blob([md], { type: "text/markdown" }), { upsert: true });
+        } catch (_) { /* archiving is best-effort; ingestion continues */ }
         const entries = parseEntries(md, log.pdfUrl);
         for (let i = 0; i < entries.length; i += 500) {
           const { error } = await supabase.from("police_logs").upsert(entries.slice(i, i + 500), { onConflict: "call_number" });
