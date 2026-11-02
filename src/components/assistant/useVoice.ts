@@ -30,6 +30,8 @@ export function stripForSpeech(md: string) {
   return md
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/^>\s?/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/\u2011/g, "-")
     .replace(/\*\*|__|\*|_|`|#+\s/g, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/\(([^)]*p\.\s?\d+[^)]*)\)/g, "")
@@ -81,6 +83,8 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
 
   const onFinalRef = useRef(onFinal);
   onFinalRef.current = onFinal;
+  // Bumped whenever speech is stopped or restarted, so stale chunks never play.
+  const speechRun = useRef(0);
   const stopRef = useRef<() => void>(() => {});
   const cleanupRef = useRef<() => void>(() => {});
 
@@ -119,6 +123,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
   /* ---------- main path: record, then transcribe with Whisper ---------- */
   const startListening = useCallback(() => {
     unlockSpeech();
+    speechRun.current++;
     try { window.speechSynthesis?.cancel(); player?.pause(); } catch { /* ignore */ }
     setSpeaking(false);
     setError(null);
@@ -226,28 +231,49 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
   const speak = useCallback(async (markdown: string, onDone?: () => void) => {
     const text = stripForSpeech(markdown);
     if (!text) { onDone?.(); return; }
+    const run = ++speechRun.current;
     let finished = false;
-    const done = () => { if (finished) return; finished = true; setSpeaking(false); onDone?.(); };
+    const done = () => { if (finished || run !== speechRun.current) return; finished = true; setSpeaking(false); onDone?.(); };
     setSpeaking(true);
+
     if (serverTts !== false && player) {
+      // Split into short chunks: the first starts playing in about a second while the rest are prepared.
+      const sentences = text.match(/[^.!?]+[.!?]*/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
+      const chunks: string[] = [];
+      for (const sen of sentences) {
+        const last = chunks[chunks.length - 1];
+        if (last && last.length + sen.length < (chunks.length === 1 ? 90 : 240)) chunks[chunks.length - 1] = `${last} ${sen}`;
+        else chunks.push(sen);
+      }
+      const fetchChunk = (t: string) => fetch(`${FN}?mode=tts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t.slice(0, 900) }) })
+        .then(async (r) => { if (!r.ok) throw new Error(String(r.status)); return URL.createObjectURL(await r.blob()); });
+      const pending = chunks.slice(0, 12).map((c, i) => (i < 2 ? fetchChunk(c) : null));
       try {
-        const r = await fetch(`${FN}?mode=tts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text.slice(0, 900) }) });
-        if (r.ok) {
+        for (let i = 0; i < pending.length; i++) {
+          if (run !== speechRun.current) return;
+          const url = await (pending[i] ?? (pending[i] = fetchChunk(chunks[i])));
+          if (i + 2 < pending.length && !pending[i + 2]) pending[i + 2] = fetchChunk(chunks[i + 2]);
           serverTts = true;
-          const url = URL.createObjectURL(await r.blob());
-          player.src = url;
-          player.onended = () => { URL.revokeObjectURL(url); done(); };
-          player.onerror = () => { URL.revokeObjectURL(url); speakBrowser(text, done); };
-          await player.play();
-          return;
+          if (run !== speechRun.current) { URL.revokeObjectURL(url); return; }
+          await new Promise<void>((resolve, reject) => {
+            player!.src = url;
+            player!.onended = () => { URL.revokeObjectURL(url); resolve(); };
+            player!.onerror = () => { URL.revokeObjectURL(url); reject(new Error("playback")); };
+            player!.play().catch(reject);
+          });
         }
-        serverTts = false;
-      } catch { serverTts = false; }
+        done();
+        return;
+      } catch {
+        if (run !== speechRun.current) return;
+        if (serverTts !== true) serverTts = false;
+      }
     }
     speakBrowser(text, done);
   }, [speakBrowser]);
 
   const stopSpeaking = useCallback(() => {
+    speechRun.current++;
     try { player?.pause(); } catch { /* ignore */ }
     window.speechSynthesis?.cancel();
     setSpeaking(false);
