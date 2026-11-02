@@ -31,7 +31,7 @@ export default function SchoolsTable({ schools, onSelectSchool }: SchoolsTablePr
 
   return (
     <Card className="h-full overflow-hidden bg-card border-gray-800">
-      <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+      <CardHeader className="pb-2 bg-secondary">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <CardTitle className="text-xl font-bold text-foreground">Revere Schools Directory</CardTitle>
           <div className="relative w-full sm:w-auto">
@@ -73,8 +73,8 @@ export default function SchoolsTable({ schools, onSelectSchool }: SchoolsTablePr
                   <TableCell className="hidden lg:table-cell">
                     <span className={
                       school.mathProficiency === null ? "text-muted-foreground" :
-                      school.mathProficiency >= 40 ? "text-green-400" :
-                      school.mathProficiency >= 30 ? "text-yellow-400" : "text-red-400"
+                      school.mathProficiency >= 40 ? "text-highlight" :
+                      school.mathProficiency >= 30 ? "text-highlight" : "text-red-400"
                     }>
                       {school.mathProficiency === null ? "N/A" : `${school.mathProficiency}%`}
                     </span>
@@ -82,8 +82,8 @@ export default function SchoolsTable({ schools, onSelectSchool }: SchoolsTablePr
                   <TableCell className="hidden lg:table-cell">
                     <span className={
                       school.readingProficiency === null ? "text-muted-foreground" :
-                      school.readingProficiency >= 40 ? "text-green-400" :
-                      school.readingProficiency >= 30 ? "text-yellow-400" : "text-red-400"
+                      school.readingProficiency >= 40 ? "text-highlight" :
+                      school.readingProficiency >= 30 ? "text-highlight" : "text-red-400"
                     }>
                       {school.readingProficiency === null ? "N/A" : `${school.readingProficiency}%`}
                     </span>
@@ -92,7 +92,7 @@ export default function SchoolsTable({ schools, onSelectSchool }: SchoolsTablePr
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-8 border-gray-700 bg-gray-800/50 hover:bg-purple-900/50 text-foreground"
+                      className="h-8 border-gray-700 bg-gray-800/50 hover:bg-secondary text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectSchool(school);

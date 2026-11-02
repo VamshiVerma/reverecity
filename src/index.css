@@ -316,3 +316,8 @@ div[role="status"][data-sonner-toast] {
 .sunrise-band .glow-blue { bottom: -150%; height: 230%; }
 .sunrise-band .glow-sun { bottom: -70%; height: 100%; width: 38%; left: 84%; }
 .sunrise-band .horizon { bottom: 0; }
+/* Phones: tab rows scroll sideways instead of squeezing labels on top of each other. */
+@media (max-width: 640px) {
+  [role="tablist"].grid { display: flex !important; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
+  [role="tablist"].grid > * { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; }
+}

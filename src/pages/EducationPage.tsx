@@ -236,7 +236,7 @@ export default function EducationPage() {
           <TabsContent value="overview" className="space-y-6 mt-4">
             {/* District Overview */}
             <Card className="bg-card border-gray-800">
-              <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+              <CardHeader className="pb-2 bg-secondary">
                 <CardTitle className="text-xl font-bold text-foreground">District Overview</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 pb-3 space-y-4">
@@ -319,28 +319,28 @@ export default function EducationPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <Card className="h-full overflow-hidden bg-card border-gray-800">
-                  <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+                  <CardHeader className="pb-2 bg-secondary">
                     <CardTitle className="text-xl font-bold text-foreground">School Types Distribution</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="flex flex-col items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                        <div className="bg-indigo-900/30 p-3 rounded-full mb-3">
-                          <Building2 className="h-8 w-8 text-indigo-400" />
+                        <div className="bg-secondary p-3 rounded-full mb-3">
+                          <Building2 className="h-8 w-8 text-highlight" />
                         </div>
                         <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('PK') || s.grades.includes('KG') || s.grades.includes('-5')).length}</h3>
                         <p className="text-sm text-muted-foreground">Elementary Schools</p>
                       </div>
                       <div className="flex flex-col items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                        <div className="bg-blue-900/30 p-3 rounded-full mb-3">
+                        <div className="bg-secondary p-3 rounded-full mb-3">
                           <Users className="h-8 w-8 text-blue-400" />
                         </div>
                         <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('6-8')).length}</h3>
                         <p className="text-sm text-muted-foreground">Middle Schools</p>
                       </div>
                       <div className="flex flex-col items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                        <div className="bg-purple-900/30 p-3 rounded-full mb-3">
-                          <GraduationCap className="h-8 w-8 text-purple-400" />
+                        <div className="bg-secondary p-3 rounded-full mb-3">
+                          <GraduationCap className="h-8 w-8 text-highlight" />
                         </div>
                         <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('9-12')).length}</h3>
                         <p className="text-sm text-muted-foreground">High Schools</p>
@@ -353,7 +353,7 @@ export default function EducationPage() {
               </div>
               <div className="lg:col-span-1">
                 <Card className="h-full overflow-hidden bg-card border-gray-800">
-                  <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+                  <CardHeader className="pb-2 bg-secondary">
                     <CardTitle className="text-xl font-bold text-foreground">Featured Schools</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">
@@ -394,7 +394,7 @@ export default function EducationPage() {
             
             {/* Test Scores Section */}
             <Card className="h-full overflow-hidden bg-card border-gray-800">
-              <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+              <CardHeader className="pb-2 bg-secondary">
                 <CardTitle className="text-xl font-bold text-foreground">District Test Scores</CardTitle>
                 <CardDescription className="text-foreground/80">
                   Proficiency in reading and mathematics by school level
@@ -455,7 +455,7 @@ export default function EducationPage() {
             
             {/* Finances Card */}
             <Card className="h-full overflow-hidden bg-card border-gray-800">
-              <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+              <CardHeader className="pb-2 bg-secondary">
                 <CardTitle className="text-xl font-bold text-foreground">District Finances</CardTitle>
               </CardHeader>
               <CardContent className="p-6">

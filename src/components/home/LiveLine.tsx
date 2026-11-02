@@ -16,7 +16,8 @@ const LINE = [
 ];
 const STORE = "revere.station";
 const MBTA = "https://api-v3.mbta.com";
-const SPAN = 16; // minutes shown on each side of the platform
+const SPAN_WIDE = 16; // minutes shown on each side of the platform
+const SPAN_NARROW = 8;
 const HOP = 2;   // typical minutes between neighbouring stations
 
 export type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
@@ -61,6 +62,14 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
   const { arrivals, asOf } = useArrivals(sel);
   const now = useNow();
   const reduce = useReducedMotion();
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const SPAN = narrow ? SPAN_NARROW : SPAN_WIDE;
   const si = LINE.findIndex((s) => s.id === sel);
   const station = LINE[si];
 
@@ -68,7 +77,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
   const trains = useMemo(() => (arrivals || [])
     .map((a) => ({ ...a, sec: (a.at - now) / 1000 }))
     .filter((a) => a.sec > -40 && a.sec < SPAN * 60)
-    .sort((a, b) => a.sec - b.sec), [arrivals, now]);
+    .sort((a, b) => a.sec - b.sec), [arrivals, now, SPAN]);
   const next = (dir: 0 | 1) => trains.filter((t) => t.dir === dir && t.sec > -20);
 
   // Boston-bound trains come from the north (left); Wonderland-bound from the south (right).
@@ -128,7 +137,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           {ticks.map((s) => (
             <div key={s.id} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${50 + (s.off / SPAN) * 50}%` }}>
               <div className="mx-auto h-[58px] w-[2px] rounded-full bg-white/25" />
-              <div className={cn("absolute left-1/2 top-[64px] w-[90px] -translate-x-1/2 text-center text-[11.5px] leading-tight", s.revere ? "text-white/80" : "text-white/45")}>{s.name}</div>
+              <div className={cn("absolute left-1/2 top-[64px] w-[90px] -translate-x-1/2 text-center text-[11.5px] leading-tight", narrow ? "hidden" : "", s.revere ? "text-white/80" : "text-white/45")}>{s.name}</div>
             </div>
           ))}
 
@@ -136,7 +145,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
             <div className="relative h-[92px] w-[10px] rounded-full bg-white shadow-[0_0_30px_rgba(255,255,255,0.45)]">
               {!reduce && <span className="absolute inset-0 animate-ping rounded-full bg-white/30" />}
             </div>
-            <div className="absolute left-1/2 top-[100px] w-[150px] -translate-x-1/2 text-center text-[13px] font-semibold">You · {station.name}</div>
+            <div className="absolute left-1/2 top-[100px] w-[150px] -translate-x-1/2 text-center text-[13px] font-semibold">You<span className="hidden md:inline"> · {station.name}</span></div>
           </div>
 
           {trains.map((t) => {
@@ -162,6 +171,12 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           })}
         </div>
 
+        {narrow && (
+          <p className="mt-3 flex justify-between text-[12px] text-white/60">
+            <span>{si > 0 ? `← ${LINE[si - 1].name}` : "End of the line"}</span>
+            <span>{si < LINE.length - 1 ? `${LINE[si + 1].name} →` : ""}</span>
+          </p>
+        )}
         <div className="mt-6 grid gap-3 md:grid-cols-2">
           {([0, 1] as const).map((dir) => {
             const a = next(dir)[0];
@@ -170,9 +185,9 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
                 <span className={cn("h-10 w-1.5 shrink-0 rounded-full", dir === 0 ? "bg-highlight-secondary" : "bg-white")} />
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] text-white/65">{dir === 0 ? "To Boston (Bowdoin)" : "To Wonderland"}</div>
-                  <div className="truncate text-[17px] font-medium">{summary(dir)}</div>
+                  <div className="text-[15px] font-medium leading-snug md:truncate md:text-[17px]">{summary(dir)}</div>
                 </div>
-                <div className={cn("figure shrink-0 text-[40px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>
+                <div className={cn("figure shrink-0 text-[32px] leading-none md:text-[40px]", dir === 0 ? "text-highlight-secondary" : "text-white")}>
                   {a ? (a.sec <= 30 ? "Now" : Math.max(1, Math.round(a.sec / 60))) : "—"}
                   {a && a.sec > 30 && <span className="ml-1 font-sans text-[14px] tracking-normal text-white/60">min</span>}
                 </div>

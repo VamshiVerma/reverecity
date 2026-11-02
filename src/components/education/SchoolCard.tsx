@@ -29,7 +29,7 @@ export interface School {
 export default function SchoolCard({ school }: SchoolCardProps) {
   return (
     <Card className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.01] bg-card border-gray-800">
-      <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+      <CardHeader className="pb-2 bg-secondary">
         <CardTitle className="text-xl font-bold text-foreground">{school.name}</CardTitle>
         <CardDescription className="text-foreground/80 flex items-center mt-2">
           <MapPin className="h-4 w-4 mr-1" /> {school.address}
@@ -62,8 +62,8 @@ export default function SchoolCard({ school }: SchoolCardProps) {
               <span className={cn(
                 "text-sm font-semibold",
                 school.mathProficiency ? 
-                  school.mathProficiency >= 40 ? "text-green-400" : 
-                  school.mathProficiency >= 30 ? "text-yellow-400" : "text-red-400"
+                  school.mathProficiency >= 40 ? "text-highlight" : 
+                  school.mathProficiency >= 30 ? "text-highlight" : "text-red-400"
                 : "text-muted-foreground"
               )}>
                 {school.mathProficiency !== null ? `${school.mathProficiency}%` : "N/A"}
@@ -75,8 +75,8 @@ export default function SchoolCard({ school }: SchoolCardProps) {
               className={cn(
                 "h-2 bg-gray-700",
                 school.mathProficiency ? 
-                  school.mathProficiency >= 40 ? "bg-green-900" : 
-                  school.mathProficiency >= 30 ? "bg-yellow-900" : "bg-red-900"
+                  school.mathProficiency >= 40 ? "bg-secondary" : 
+                  school.mathProficiency >= 30 ? "bg-secondary" : "bg-secondary"
                 : "bg-gray-800"
               )}
             />
@@ -88,8 +88,8 @@ export default function SchoolCard({ school }: SchoolCardProps) {
               <span className={cn(
                 "text-sm font-semibold",
                 school.readingProficiency ? 
-                  school.readingProficiency >= 40 ? "text-green-400" : 
-                  school.readingProficiency >= 30 ? "text-yellow-400" : "text-red-400"
+                  school.readingProficiency >= 40 ? "text-highlight" : 
+                  school.readingProficiency >= 30 ? "text-highlight" : "text-red-400"
                 : "text-muted-foreground"
               )}>
                 {school.readingProficiency !== null ? `${school.readingProficiency}%` : "N/A"}
@@ -101,8 +101,8 @@ export default function SchoolCard({ school }: SchoolCardProps) {
               className={cn(
                 "h-2 bg-gray-700",
                 school.readingProficiency ? 
-                  school.readingProficiency >= 40 ? "bg-green-900" : 
-                  school.readingProficiency >= 30 ? "bg-yellow-900" : "bg-red-900"
+                  school.readingProficiency >= 40 ? "bg-secondary" : 
+                  school.readingProficiency >= 30 ? "bg-secondary" : "bg-secondary"
                 : "bg-gray-800"
               )}
             />

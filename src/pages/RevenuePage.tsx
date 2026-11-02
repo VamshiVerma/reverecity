@@ -18,7 +18,7 @@ function Bars({ series, height = 180, compact = false }: { series: Point[]; heig
       {series.map((s, i) => (
         <div key={s.fy} className="group relative flex h-full flex-1 flex-col justify-end">
           {!compact && (
-            <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-foreground opacity-0 shadow-lg ring-1 ring-border transition group-hover:opacity-100">
+            <span className={cn("pointer-events-none absolute -top-1 z-10 -translate-y-full whitespace-nowrap rounded-md bg-popover px-2 py-1 text-[11px] font-semibold text-foreground opacity-0 shadow-lg ring-1 ring-border transition group-hover:opacity-100", i >= series.length - 2 ? "right-0" : i < 2 ? "left-0" : "left-1/2 -translate-x-1/2")}>
               FY{s.fy}: {money(s.v, 2)}{s.projected ? " (proj.)" : ""}
             </span>
           )}

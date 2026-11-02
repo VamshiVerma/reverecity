@@ -63,7 +63,7 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
 
   return (
     <Card className="h-full overflow-hidden bg-card border-gray-800">
-      <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
+      <CardHeader className="pb-2 bg-secondary">
         <CardTitle className="text-xl font-bold text-foreground">Grade Level Distribution</CardTitle>
       </CardHeader>
       <CardContent className="p-4">

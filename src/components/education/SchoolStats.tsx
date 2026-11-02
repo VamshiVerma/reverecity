@@ -31,21 +31,21 @@ export default function SchoolStats({ schools }: SchoolStatsProps) {
       value: schools.length, 
       icon: BookOpen,
       description: "Public schools in Revere",
-      color: "from-violet-500 to-purple-500" 
+      color: "" 
     },
     { 
       title: "Total Enrollment", 
       value: totalEnrollment.toLocaleString(), 
       icon: Users,
       description: "Students enrolled",
-      color: "from-blue-500 to-indigo-500" 
+      color: "" 
     },
     { 
       title: "Average Student-Teacher Ratio", 
       value: avgStudentTeacherRatio.toFixed(1) + ":1", 
       icon: Calculator,
       description: "Students per teacher",
-      color: "from-emerald-500 to-teal-500" 
+      color: "" 
     },
     { 
       title: "Average Proficiency", 
@@ -54,7 +54,7 @@ export default function SchoolStats({ schools }: SchoolStatsProps) {
         : "N/A", 
       icon: Percent,
       description: "Math & reading combined",
-      color: "from-amber-500 to-orange-500" 
+      color: "" 
     },
   ];
 
@@ -62,7 +62,7 @@ export default function SchoolStats({ schools }: SchoolStatsProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map((stat, index) => (
         <Card key={index} className="hover:shadow-lg transition-all duration-300 bg-card border-gray-800">
-          <CardHeader className={`pb-2 bg-gradient-to-r ${stat.color}`}>
+          <CardHeader className="pb-1">
             <div className="flex justify-between items-center">
               <CardTitle className="text-sm font-medium text-foreground">{stat.title}</CardTitle>
               <stat.icon className="h-5 w-5 text-foreground opacity-80" />

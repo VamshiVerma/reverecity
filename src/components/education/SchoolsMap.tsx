@@ -18,7 +18,7 @@ export default function SchoolsMap({
   // In a real implementation, you would use a mapping library like Leaflet or Google Maps
   return (
     <Card className="h-full overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-purple-900/70 to-indigo-900/70 pb-2">
+      <CardHeader className="bg-secondary pb-2">
         <CardTitle className="text-xl font-bold text-foreground">Schools Map</CardTitle>
       </CardHeader>
       <CardContent className="p-0 bg-gray-800 relative h-[400px] flex items-center justify-center">
