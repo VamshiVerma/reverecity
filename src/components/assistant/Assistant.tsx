@@ -453,6 +453,29 @@ function DataCard({ card }: { card: AskCard }) {
       </div>
     );
   }
+  if (card.type === "housing") {
+    const top = Math.max(1, ...card.rows.map((r) => r.value ?? 0));
+    return (
+      <div className={cn(shell, "p-3")}>
+        <div className="mb-2 flex items-baseline justify-between text-xs text-muted-foreground">
+          <span>Typical home value</span>
+          {card.month && <span>Zillow · {new Date(card.month + "T12:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>}
+        </div>
+        <div className="space-y-1.5">
+          {card.rows.filter((r) => r.value).map((r, i) => (
+            <div key={r.place} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 text-xs">
+              <span className={cn("truncate", r.place === "Revere" ? "font-semibold text-foreground" : "text-muted-foreground")}>{r.place}</span>
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <motion.div className={cn("h-full rounded-full", r.place === "Revere" ? "bg-highlight" : "bg-white/25")} initial={{ width: 0 }}
+                  animate={{ width: `${((r.value ?? 0) / top) * 100}%` }} transition={{ duration: 0.6, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }} />
+              </div>
+              <span className="tabular-nums text-foreground">${Math.round((r.value ?? 0) / 1000)}K{r.rent ? <span className="text-muted-foreground"> · ${r.rent.toLocaleString("en-US")}/mo</span> : null}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   const max = Math.max(1, ...card.byCat.map(([, v]) => v));
   return (
     <div className={cn(shell, "p-3")}>

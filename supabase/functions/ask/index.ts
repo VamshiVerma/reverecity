@@ -27,6 +27,7 @@ function intents(q: string) {
     budget: has(/budget|spend|spent|cost|money|fund|tax|revenue|salar|payroll|department|appropriat|fiscal|fy ?2?0?2[0-9]|million|dollar|\$|school|dpw|public works|pension|debt|capital|levy|ftes?|staff|employees|positions/),
     weather: has(/weather|temperature|rain|snow|wind|cold|hot|forecast|storm|umbrella|sunny|degrees|alert|warning|flood/) && !has(/budget|spend|cost|money|fund|removal|plow|fy ?2?0?2[0-9]|\$/),
     mbta: has(/mbta|\bt\b|train|blue line|subway|transit|commute|wonderland|revere beach station|beachmont|suffolk downs|bus|delay|shuttle/),
+    housing: has(/hous|home (value|price)|homes?\b.*(cost|worth|price)|\brents?\b|\brental|apartment|condo|real estate market|afford|zillow|mortgage|cost of living|live in revere/) && !has(/property tax|tax levy|housing authority budget/),
   };
 }
 
@@ -127,6 +128,20 @@ async function weatherContext() {
 
 // ---------- MBTA ----------
 const STOPS: Record<string, string> = { "place-wondl": "Wonderland", "place-rbmnl": "Revere Beach", "place-bmmnl": "Beachmont", "place-sdmnl": "Suffolk Downs" };
+// ---------- housing (Zillow Research, refreshed monthly) ----------
+async function housingContext() {
+  const since = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+  const { data } = await supabase.from("housing_market").select("place,metric,month,value").gte("month", since).order("month");
+  const by: Record<string, Record<string, { month: string; value: number }[]>> = {};
+  for (const r of data || []) ((by[r.place] ||= {})[r.metric] ||= []).push(r);
+  const rows = Object.entries(by).map(([place, m]) => {
+    const v = m.zhvi || [], r = m.zori || [];
+    const yoy = (s: any[]) => (s.length >= 13 ? ((s[s.length - 1].value - s[s.length - 13].value) / s[s.length - 13].value) * 100 : null);
+    return { place, value: v.at(-1)?.value, vYoY: yoy(v), rent: r.at(-1)?.value, rYoY: yoy(r), month: v.at(-1)?.month };
+  }).sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+  return { rows, month: rows.find((r) => r.place === "Revere")?.month };
+}
+
 async function mbtaContext() {
   const base = "https://api-v3.mbta.com";
   const [al, pr] = await Promise.all([
@@ -213,14 +228,15 @@ Deno.serve(async (req) => {
     if (!q) return json({ error: "empty question" }, 400);
 
     let it = intents(q);
-    if (!it.police && !it.budget && !it.weather && !it.mbta) it = { police: false, budget: true, weather: false, mbta: false }; // documents are the default knowledge base
+    if (!it.police && !it.budget && !it.weather && !it.mbta && !it.housing) it = { police: false, budget: true, weather: false, mbta: false, housing: false }; // documents are the default knowledge base
 
-    const [police, budget, weather, mbta, depts] = await Promise.all([
+    const [police, budget, weather, mbta, depts, housing] = await Promise.all([
       it.police ? policeContext(q) : null,
       it.budget ? budgetContext(q).catch(() => []) : null,
       it.weather ? weatherContext() : null,
       it.mbta ? mbtaContext() : null,
       it.budget ? departmentFigures(q).catch(() => []) : [],
+      it.housing ? housingContext().catch(() => null) : null,
     ]);
 
     const sources: Source[] = [];
@@ -274,6 +290,14 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       cards.push({ type: "mbta", alerts: mbta.alerts.slice(0, 4), preds: mbta.preds.slice(0, 6) });
     }
 
+    if (housing && housing.rows.length) {
+      const pc = (x: number | null) => (x == null ? "n/a" : `${x >= 0 ? "+" : ""}${x.toFixed(1)}%`);
+      ctx.push(`HOUSING MARKET (Zillow Research ZHVI home values and ZORI rents by ZIP, as of ${housing.month}):\n${housing.rows.map((r) =>
+        `${r.place}: typical home value ${r.value ? "$" + r.value.toLocaleString("en-US") : "n/a"} (${pc(r.vYoY)} y/y); typical rent ${r.rent ? "$" + r.rent.toLocaleString("en-US") + "/mo" : "n/a"} (${pc(r.rYoY)} y/y)`).join("\n")}`);
+      sources.push({ kind: "budget", label: "Zillow Research", detail: `ZHVI & ZORI · ${housing.month ? fmtDate(housing.month) : "latest"}`, url: "https://www.zillow.com/research/data/" });
+      cards.push({ type: "housing", month: housing.month, rows: housing.rows });
+    }
+
     const seenSrc = new Set<string>();
     const uniqSources = sources.filter((x) => { const k = x.label + "|" + (x.detail ?? "") + "|" + (x.url ?? ""); if (seenSrc.has(k)) return false; seenSrc.add(k); return true; }).slice(0, 8);
     sources.length = 0; sources.push(...uniqSources);
@@ -300,6 +324,14 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
         parts.push(mbta.alerts.length ? `**MBTA:** ${mbta.alerts.length} active alert(s) — ${mbta.alerts[0].header}` : `**MBTA:** no active alerts on the Blue Line or Revere bus routes.`);
         const nb = mbta.preds.filter((p: any) => p.station === "Revere Beach").slice(0, 3);
         if (nb.length) parts.push(`- Revere Beach: ${nb.map((p: any) => `${p.toward} in ${p.mins} min`).join(" · ")}`);
+      }
+      if (housing && housing.rows.length) {
+        const r = housing.rows.find((x) => x.place === "Revere");
+        const pc = (x: number | null) => (x == null ? "" : ` (${x >= 0 ? "up" : "down"} ${Math.abs(x).toFixed(1)}% in a year)`);
+        if (r) parts.push(`**Housing in Revere (${housing.month ? fmtDate(housing.month) : "latest"}):** typical home value **$${r.value?.toLocaleString("en-US")}**${pc(r.vYoY)}${r.rent ? `; typical rent **$${r.rent.toLocaleString("en-US")}/month**${pc(r.rYoY)}` : ""}.`);
+        if (r?.rent) parts.push(`- Affording that rent at 30% of income takes about $${Math.round((r.rent * 12) / 0.3 / 1000)}K a year.`);
+        housing.rows.filter((x) => x.place !== "Revere" && x.value).slice(0, 6).forEach((x) => parts.push(`- ${x.place}: $${x.value!.toLocaleString("en-US")}${x.rent ? ` · rent $${x.rent.toLocaleString("en-US")}/mo` : ""}`));
+        parts.push(`- Source: *Zillow Research (ZHVI, ZORI)*`);
       }
       const byName = new Map<string, any[]>();
       for (const d of depts || []) byName.set(d.name, [...(byName.get(d.name) || []), d]);

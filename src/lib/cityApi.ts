@@ -25,7 +25,8 @@ export type AskCard =
   | { type: "weather"; current: { temp: number; feels: number; conditions: string; icon: string; wind: number }; days: { date: string; hi: number; lo: number; conditions: string; precipprob: number }[]; alerts: number }
   | { type: "mbta"; alerts: { effect: string; header: string }[]; preds: { station: string; toward: string; mins: number }[] }
   | { type: "police"; latestDate: string; since: string; total: number; streets: string[]; byCat: [string, number][] }
-  | { type: "budget"; rows: { name: string; fy: number; amount: number | null; prior: number | null; payroll: number | null; nonPayroll: number | null; page: number; doc: string }[] };
+  | { type: "budget"; rows: { name: string; fy: number; amount: number | null; prior: number | null; payroll: number | null; nonPayroll: number | null; page: number; doc: string }[] }
+  | { type: "housing"; month?: string; rows: { place: string; value?: number; vYoY: number | null; rent?: number; rYoY: number | null }[] };
 export type AskResponse = { answer: string; sources: AskSource[]; cards: AskCard[]; mode: "llm" | "grounded"; model: string | null; ms: number };
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
