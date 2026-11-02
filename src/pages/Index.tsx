@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Mic } from "lucide-react";
+import LiveLine from "@/components/home/LiveLine";
+import { PoliceWeek, WeatherField, MoneyBar, HomesCard, AskPostcard } from "@/components/home/Sections";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { usePulse } from "@/lib/usePulse";
@@ -12,7 +14,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://ckwiryfnnguar
 type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
 type Snapshot = {
   weather: { temp: number; feels: number; conditions: string; hi: number; lo: number; alerts: string[]; asOf: string; days?: { date: string; hi: number; lo: number; conditions: string; precipprob: number }[] } | null;
-  police: { calls7d: number; prev7d: number; since: string; through: string; topCategory: string | null; daily: { d: string; n: number }[] } | null;
+  police: { calls7d: number; prev7d: number; since: string; through: string; topCategory: string | null; daily: { d: string; n: number }[]; byCat?: { k: string; n: number }[] } | null;
   mbta: { status: string; alerts: { effect: string; header: string }[]; stations?: Station[]; asOf: string };
   budget: Record<string, { name: string; amount: number; prior: number; page: number; url: string } | null>;
 };
@@ -34,7 +36,7 @@ function greeting() {
 export default function Index() {
   const [s, setS] = useState<Snapshot | null>(null);
   const [err, setErr] = useState(false);
-  const [depts, setDepts] = useState<Dept[]>([]);
+  const [allDepts, setDepts] = useState<Dept[]>([]);
   const [homes, setHomes] = useState<Home[]>([]);
   const pulse = usePulse();
   const reduce = useReducedMotion();
@@ -44,7 +46,7 @@ export default function Index() {
     const load = () => fetch(`${SUPABASE_URL}/functions/v1/city-snapshot`).then((r) => r.json()).then((j) => alive && setS(j)).catch(() => alive && setErr(true));
     load();
     const id = setInterval(load, 60_000);
-    supabase.from("budget_departments" as any).select("name,recommended,prior_adopted,page,source_url").eq("fiscal_year", 2027).order("recommended", { ascending: false }).limit(6)
+    supabase.from("budget_departments" as any).select("name,recommended,prior_adopted,page,source_url").eq("fiscal_year", 2027).order("recommended", { ascending: false })
       .then(({ data }) => alive && setDepts((data as unknown as Dept[]) || []));
     const since = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
     supabase.from("housing_market" as any).select("place,metric,value,month").in("place", ["Revere", "Chelsea", "East Boston", "Everett"]).gte("month", since).order("month")
@@ -81,88 +83,27 @@ export default function Index() {
   return (
     <DashboardLayout pageTitle="Overview">
       <Hero s={s} today={today} homes={housing[0]} rb={rb} wow={wow} />
-      <div className="mx-auto w-full max-w-[1100px] pt-2">
+      <div className="w-full">
         {err && !s && <p className="mt-6 rounded-[22px] bg-card p-5 text-[15px] text-muted-foreground">The live feeds aren't answering right now. The pages still work; numbers will appear when the connection returns.</p>}
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <motion.section {...rise(5)} className="relative overflow-hidden rounded-[22px] bg-[#0297DE] p-5 text-white [--foreground:0_0%_100%] [--muted-foreground:199_80%_92%] [--brand:0_0%_100%] [--card:199_98%_44%] [--background:201_100%_30%] [--success:152_70%_75%] md:p-6 lg:col-span-9">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-[16px] font-semibold text-foreground">The Blue Line through Revere</h2>
-              <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <span className={cn("h-2 w-2 rounded-full", s?.mbta.alerts.length ? "bg-warning" : "bg-success")} />
-                {s ? `${s.mbta.status} · updated ${fmtTime(s.mbta.asOf)}` : "Loading"}
-              </span>
-            </div>
-            <BlueLine stations={s?.mbta.stations} />
-            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[14px] bg-background px-4 py-3 text-[14px]">
-              <span className="text-muted-foreground">Buses through Revere</span>
-              {["110", "116", "117", "119", "411", "426", "450"].map((r) => <span key={r} className="tnum font-medium text-foreground">{r}</span>)}
-              <Link to="/mbta" className="ml-auto text-[13px] text-muted-foreground hover:text-foreground">Live times</Link>
-            </div>
-            {!!s?.mbta.alerts.length && <p className="mt-5 rounded-[14px] bg-background px-4 py-3 text-[14px] text-foreground">{s.mbta.alerts[0].header}</p>}
-          </motion.section>
+        <div className="mt-4"><LiveLine stations={s?.mbta.stations} alert={s?.mbta.alerts[0]?.header} /></div>
 
-          <motion.section {...rise(6)} className="rounded-[22px] bg-card p-5 lg:col-span-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-[16px] font-semibold text-foreground">This week</h2>
-              <Link to="/weather" className="text-[13px] text-muted-foreground hover:text-foreground">Forecast</Link>
-            </div>
-            <ul className="mt-3 space-y-1">
-              {(s?.weather?.days ?? []).slice(1, 5).map((d) => (
-                <li key={d.date} className="flex items-center justify-between py-2 text-[15px]">
-                  <span className="w-11 text-muted-foreground">{new Date(d.date + "T12:00").toLocaleDateString("en-US", { weekday: "short" })}</span>
-                  <span className="min-w-0 flex-1 truncate px-2 text-foreground">{d.precipprob >= 40 ? `${d.precipprob}% rain` : d.conditions}</span>
-                  <span className="tnum text-foreground">{Math.round(d.hi)}°<span className="text-muted-foreground"> {Math.round(d.lo)}°</span></span>
-                </li>
-              ))}
-              {!s && [0, 1, 2, 3].map((i) => <li key={i} className="skeleton h-9" />)}
-            </ul>
-          </motion.section>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <PoliceWeek police={police} wow={wow} calls={calls} />
+          <WeatherField w={s?.weather ?? null} />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <Panel i={7} rise={rise} title="From the police log" meta={police ? `Notable calls · latest log runs through ${fmtDay(police.through)}` : ""} to="/police-logs" span="lg:col-span-6">
-            {calls.map((c) => (
-              <Row key={c.id} to="/police-logs" left={c.text.split(" · ")[0]} sub={c.text.split(" · ").slice(1).join(" · ")} right={c.tag} muted />
-            ))}
-            {!calls.length && <Empty text="No notable calls in the latest log." />}
-          </Panel>
-          <Panel i={8} rise={rise} title="Where the money goes" meta="FY2027 adopted budget · largest departments" to="/budget" span="lg:col-span-6">
-            {depts.slice(0, 5).map((d) => {
-              const ch = d.prior_adopted ? ((d.recommended - d.prior_adopted) / d.prior_adopted) * 100 : null;
-              return <Row key={d.name} href={`${d.source_url}#page=${d.page}`} left={tidy(d.name)} sub={`Budget p. ${d.page}${ch != null ? ` · ${ch >= 0 ? "+" : "−"}${Math.abs(ch).toFixed(1)}% from FY2026` : ""}`} right={money(d.recommended)} />;
-            })}
-            {!depts.length && <Empty text="Loading the budget…" />}
-          </Panel>
-        </div>
+        <MoneyBar depts={allDepts} school={s?.budget.school ?? null} />
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <Panel i={9} rise={rise} title="What homes cost" meta={housing[0]?.value ? `Zillow estimates · ${new Date(housing[0].value.month + "T12:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}` : ""} to="/housing" span="lg:col-span-6">
-            {housing.filter((h) => h.value).map((h) => {
-              const yoy = h.was ? ((h.value!.value - h.was.value) / h.was.value) * 100 : null;
-              return <Row key={h.place} to="/housing" left={h.place} sub={`${h.rent ? `Rent $${h.rent.value.toLocaleString("en-US")}/mo` : "No rent index"}${yoy != null ? ` · ${yoy >= 0 ? "+" : "−"}${Math.abs(yoy).toFixed(1)}% in a year` : ""}`} right={`$${Math.round(h.value!.value / 1000)}K`} />;
-            })}
-            {!homes.length && <Empty text="Loading housing data…" />}
-          </Panel>
-          <motion.section {...rise(10)} className="rounded-[22px] bg-card p-5 lg:col-span-6">
-            <h2 className="text-[16px] font-semibold text-foreground">Ask it the way you'd ask a neighbor</h2>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">Type or talk. Every answer shows where the facts came from.</p>
-            <div className="mt-3 grid gap-2">
-              {["Is anything going on near Revere Beach this week?", "When is the next train to Boston from Beachmont?", "How much does the city spend on snow and ice?", "What's the rent like compared to Chelsea?"].map((q) => (
-                <button key={q} onClick={() => ask({ q })} className="group flex min-h-[52px] items-center justify-between rounded-[14px] bg-background px-4 text-left text-[15px] text-foreground transition-colors hover:bg-secondary">
-                  <span className="truncate">{q}</span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </button>
-              ))}
-            </div>
-          </motion.section>
+          <HomesCard housing={housing} />
+          <AskPostcard />
         </div>
       </div>
     </DashboardLayout>
   );
 }
 
-type RiseFn = (i: number) => object;
 
 function CountUp({ to, format = (v: number) => Math.round(v).toLocaleString("en-US") }: { to: number; format?: (v: number) => string }) {
   const reduce = useReducedMotion();
@@ -249,71 +190,7 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
   );
 }
 
-function Tile({ i, rise, to, label, value, caption }: { i: number; rise: RiseFn; to: string; label: string; value: string | null; caption: string }) {
-  return (
-    <motion.div {...rise(i)} className="lg:col-span-3">
-      <Link to={to} className="flex h-[132px] flex-col rounded-[22px] bg-card p-4 transition-colors hover:bg-secondary">
-        <span className="text-[14px] text-muted-foreground">{label}</span>
-        {value == null ? <span className="skeleton mt-2 h-9 w-24" /> : <span className="tnum mt-1 text-[32px] leading-tight text-foreground">{value}</span>}
-        <span className="mt-auto line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{caption}</span>
-      </Link>
-    </motion.div>
-  );
-}
 
-function Panel({ i, rise, title, meta, to, span, children }: { i: number; rise: RiseFn; title: string; meta: string; to: string; span: string; children: React.ReactNode }) {
-  return (
-    <motion.section {...rise(i)} className={cn("rounded-[22px] bg-card p-5", span)}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[16px] font-semibold text-foreground">{title}</h2>
-        <Link to={to} className="shrink-0 text-[13px] text-muted-foreground hover:text-foreground">View all</Link>
-      </div>
-      {meta && <p className="mt-0.5 text-[13px] text-muted-foreground">{meta}</p>}
-      <div className="mt-3 space-y-2">{children}</div>
-    </motion.section>
-  );
-}
 
-function Row({ left, sub, right, to, href, muted }: { left: string; sub?: string; right: string; to?: string; href?: string; muted?: boolean }) {
-  const inner = (
-    <>
-      <span className="min-w-0">
-        <span className="block truncate text-[15px] text-foreground">{left}</span>
-        {sub && <span className="block truncate text-[13px] text-muted-foreground">{sub}</span>}
-      </span>
-      <span className={cn("tnum shrink-0 pl-3 text-right", muted ? "text-[13px] text-muted-foreground" : "text-[15px] text-foreground")}>{right}</span>
-    </>
-  );
-  const cls = "flex min-h-[63px] items-center justify-between rounded-[14px] bg-background px-4 py-2 transition-colors hover:bg-secondary";
-  return href ? <a href={href} target="_blank" rel="noreferrer" className={cls}>{inner}</a> : <Link to={to || "/"} className={cls}>{inner}</Link>;
-}
 
-function Empty({ text }: { text: string }) {
-  return <p className="rounded-[14px] bg-background px-4 py-5 text-[14px] text-muted-foreground">{text}</p>;
-}
 
-/** Revere's four Blue Line stations, north to south, with the next train each way. */
-function BlueLine({ stations }: { stations?: Station[] }) {
-  const list = stations ?? ["Wonderland", "Revere Beach", "Beachmont", "Suffolk Downs"].map((name) => ({ id: name, name, toBowdoin: null, toWonderland: null }));
-  return (
-    <div className="mt-7">
-      <div className="relative grid grid-cols-4">
-        <div className="absolute left-[12.5%] right-[12.5%] top-[9px] h-[6px] rounded-full bg-highlight" aria-hidden>
-          <motion.span className="absolute top-1/2 h-[14px] w-9 -translate-y-1/2 rounded-full bg-highlight-secondary shadow-[0_0_18px_hsl(13_97%_64%/0.9)]"
-            animate={{ left: ["0%", "calc(100% - 36px)", "0%"] }} transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }} />
-        </div>
-        {list.map((st, i) => (
-          <div key={st.id} className="relative flex flex-col items-center px-1 text-center">
-            <motion.span className="relative z-[2] block h-6 w-6 rounded-full border-[5px] border-highlight bg-card"
-              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 420, damping: 18 }} />
-            <span className="mt-3 text-[15px] font-medium leading-tight text-foreground">{st.name}</span>
-            <dl className="mt-2 space-y-0.5 text-[13px]">
-              <div className="flex flex-wrap justify-center gap-x-1.5"><dt className="text-muted-foreground">To Boston</dt><dd className="tnum font-medium text-foreground">{stations ? mins(st.toBowdoin) : "…"}</dd></div>
-              <div className="flex flex-wrap justify-center gap-x-1.5"><dt className="text-muted-foreground">{i === 0 ? "Arriving" : "Northbound"}</dt><dd className="tnum font-medium text-foreground">{stations ? mins(st.toWonderland) : "…"}</dd></div>
-            </dl>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -125,6 +125,16 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
           ))}
         </nav>
 
+        <NavLink to="/" onClick={close} className="group relative mx-3 mb-2 block h-[132px] shrink-0 overflow-hidden rounded-[18px]">
+          <img src="/images/revere-beach-carnival-postcard.jpg" alt="Postcard of Carnival Week crowds on Revere Beach, early 1900s" loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_25%,rgba(2,7,10,0.92))]" />
+          <span className="absolute bottom-2.5 left-3 right-3 text-white">
+            <span className="block font-serif-display text-[18px] leading-tight">America's first <em className="italic text-highlight-secondary">public beach</em></span>
+            <span className="block text-[11.5px] text-white/70">Revere Beach, opened 1896</span>
+          </span>
+        </NavLink>
+
         <div className="flex items-center justify-between gap-3 px-5 py-4">
           <p className="text-[12px] leading-snug text-muted-foreground">Independent, from public data</p>
           <button
