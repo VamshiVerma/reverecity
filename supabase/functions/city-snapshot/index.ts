@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     const top = (c.by_category || [])[0];
     police = {
       calls7d: c.total ?? 0, prev7d: prev.data?.total ?? 0, since, through: ld, topCategory: top?.k ?? null, topCount: top?.n ?? 0,
+      byCat: (c.by_category || []).slice(0, 8).map((x: any) => ({ k: x.k, n: x.n })),
       daily: (() => {
         const d = (c.by_day || []).map((x: any) => ({ d: x.k, n: x.n }));
         const sorted = d.map((x: any) => x.n).sort((a: number, b: number) => a - b);
