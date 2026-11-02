@@ -42,3 +42,4 @@ env/
 # OS specific
 *.bat
 .vercel
+.taste-skill/

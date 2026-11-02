@@ -121,7 +121,7 @@ const RevenueBarChart = ({
   return (
     <div className="glass-card p-4 rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-light-text">{title}</h3>
+        <h3 className="text-lg font-medium text-foreground">{title}</h3>
       </div>
       
       <div style={{ height }}>

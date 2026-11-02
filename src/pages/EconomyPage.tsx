@@ -14,10 +14,10 @@ const EconomyPage = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-light-text flex items-center">
+        <h1 className="text-3xl font-bold text-foreground flex items-center">
           <TrendingUp className="mr-3 text-highlight" /> Economic Data
         </h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-muted-foreground mt-2">
           Economic insights for Revere, Massachusetts
         </p>
       </div>
@@ -53,7 +53,7 @@ const EconomyPage = () => {
           {/* Employment by Industries Tab */}
           <TabsContent value="industries" className="mt-4 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <Database className="h-4 w-4 mr-2 text-highlight" />
@@ -63,18 +63,18 @@ const EconomyPage = () => {
                 <CardContent>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-gray-300">2023 Value</span>
-                      <span className="font-semibold text-light-text">31.9k</span>
+                      <span className="text-foreground/80">2023 Value</span>
+                      <span className="font-semibold text-foreground">31.9k</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300">1 Year Change</span>
+                      <span className="text-foreground/80">1 Year Change</span>
                       <span className="text-red-400">-0.549%</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <BriefcaseBusiness className="h-4 w-4 mr-2 text-highlight" />
@@ -82,7 +82,7 @@ const EconomyPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-gray-300 space-y-2">
+                  <ul className="text-foreground/80 space-y-2">
                     <li className="flex justify-between items-center">
                       <span>Health Care & Social Assistance</span>
                       <Badge variant="outline" className="bg-highlight/10">4,270</Badge>
@@ -99,7 +99,7 @@ const EconomyPage = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <TrendingUp className="h-4 w-4 mr-2 text-highlight" />
@@ -109,15 +109,15 @@ const EconomyPage = () => {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Healthcare Growth</span>
+                      <span className="text-foreground/80">Healthcare Growth</span>
                       <span className="text-green-400">+3.2%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Retail Decline</span>
+                      <span className="text-foreground/80">Retail Decline</span>
                       <span className="text-red-400">-1.7%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Food Service Growth</span>
+                      <span className="text-foreground/80">Food Service Growth</span>
                       <span className="text-green-400">+2.1%</span>
                     </div>
                   </div>
@@ -125,7 +125,7 @@ const EconomyPage = () => {
               </Card>
             </div>
             
-            <h2 className="text-xl font-semibold text-light-text mb-4">Employment by Industries</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Employment by Industries</h2>
             <div className="h-80">
               <BarChart
                 data={[
@@ -150,7 +150,7 @@ const EconomyPage = () => {
           {/* Occupations Tab */}
           <TabsContent value="occupations" className="mt-4 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <Users className="h-4 w-4 mr-2 text-highlight" />
@@ -160,18 +160,18 @@ const EconomyPage = () => {
                 <CardContent>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-gray-300">2023 Value</span>
-                      <span className="font-semibold text-light-text">31.9k</span>
+                      <span className="text-foreground/80">2023 Value</span>
+                      <span className="font-semibold text-foreground">31.9k</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-300">1 Year Change</span>
+                      <span className="text-foreground/80">1 Year Change</span>
                       <span className="text-red-400">-0.549%</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <BriefcaseBusiness className="h-4 w-4 mr-2 text-highlight" />
@@ -179,7 +179,7 @@ const EconomyPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-gray-300 space-y-2">
+                  <ul className="text-foreground/80 space-y-2">
                     <li className="flex justify-between items-center">
                       <span>Management Occupations</span>
                       <Badge variant="outline" className="bg-highlight/10">3,499</Badge>
@@ -196,7 +196,7 @@ const EconomyPage = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <TrendingUp className="h-4 w-4 mr-2 text-highlight" />
@@ -206,11 +206,11 @@ const EconomyPage = () => {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Computer & Mathematical</span>
+                      <span className="text-foreground/80">Computer & Mathematical</span>
                       <span className="text-green-400">+22.0%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Business & Financial Operations</span>
+                      <span className="text-foreground/80">Business & Financial Operations</span>
                       <span className="text-green-400">+17.0%</span>
                     </div>
                   </div>
@@ -218,7 +218,7 @@ const EconomyPage = () => {
               </Card>
             </div>
             
-            <h2 className="text-xl font-semibold text-light-text mb-4">Occupations</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Occupations</h2>
             <div className="h-80">
               <PieChart
                 data={[
@@ -237,7 +237,7 @@ const EconomyPage = () => {
           {/* Median Earnings Tab */}
           <TabsContent value="earnings" className="mt-4 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <DollarSign className="h-4 w-4 mr-2 text-highlight" />
@@ -247,22 +247,22 @@ const EconomyPage = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Men</span>
+                      <span className="text-foreground/80">Men</span>
                       <div className="flex flex-col items-end">
-                        <span className="text-xl font-bold text-light-text">{formatCurrency(52793)}</span>
+                        <span className="text-xl font-bold text-foreground">{formatCurrency(52793)}</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Women</span>
+                      <span className="text-foreground/80">Women</span>
                       <div className="flex flex-col items-end">
-                        <span className="text-xl font-bold text-light-text">{formatCurrency(36103)}</span>
+                        <span className="text-xl font-bold text-foreground">{formatCurrency(36103)}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <BarChart3 className="h-4 w-4 mr-2 text-highlight" />
@@ -270,11 +270,11 @@ const EconomyPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-gray-300 space-y-2">
+                  <ul className="text-foreground/80 space-y-2">
                     <li className="flex justify-between items-center">
                       <HoverCard>
                         <HoverCardTrigger><span className="border-b border-dotted border-gray-500">Information</span></HoverCardTrigger>
-                        <HoverCardContent className="bg-card/80 border border-white/10">Tech, telecom, publishing, broadcasting industries</HoverCardContent>
+                        <HoverCardContent className="bg-card/80 border border-border">Tech, telecom, publishing, broadcasting industries</HoverCardContent>
                       </HoverCard>
                       <span className="font-semibold">{formatCurrency(84525)}</span>
                     </li>
@@ -290,7 +290,7 @@ const EconomyPage = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
                     <BarChart3 className="h-4 w-4 mr-2 text-highlight" />
@@ -298,7 +298,7 @@ const EconomyPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-gray-300 space-y-2">
+                  <ul className="text-foreground/80 space-y-2">
                     <li className="flex justify-between items-center">
                       <span>Finance & Real Estate</span>
                       <span className="font-semibold">{formatCurrency(90141)}</span>
@@ -316,7 +316,7 @@ const EconomyPage = () => {
               </Card>
             </div>
             
-            <h2 className="text-xl font-semibold text-light-text mb-4">Median Earnings</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Median Earnings</h2>
             <div className="h-80">
               <BarChart
                 data={[

@@ -31,9 +31,9 @@ const WeatherPage: React.FC = () => {
       case "cloudy":
       case "partly-cloudy-day":
       case "partly-cloudy-night":
-        return <Cloud className="h-5 w-5 text-gray-400" />;
+        return <Cloud className="h-5 w-5 text-muted-foreground" />;
       case "wind":
-        return <Wind className="h-5 w-5 text-gray-400" />;
+        return <Wind className="h-5 w-5 text-muted-foreground" />;
       case "clear-day":
         return <Sun className="h-5 w-5 text-yellow-400" />;
       default:

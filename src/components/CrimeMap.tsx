@@ -47,7 +47,7 @@ const CrimeMap = () => {
                         spot.level === 'orange' ? 'text-orange-500' : 'text-red-500'}
                     `}
                   />
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded whitespace-nowrap">
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-black/70 text-foreground text-xs px-1.5 py-0.5 rounded whitespace-nowrap">
                     {spot.name}
                   </div>
                 </div>

@@ -181,7 +181,7 @@ const MBTAPage = () => {
           setActiveTab(value);
         }} className="w-full">
           <TabsList className="bg-card border">
-            <TabsTrigger value="Blue" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+            <TabsTrigger value="Blue" className="data-[state=active]:bg-blue-500 data-[state=active]:text-foreground">
               <div className="flex items-center gap-2">
                 <TrainFront size={18} />
                 <span>Blue Line</span>
@@ -243,7 +243,7 @@ const MBTAPage = () => {
                                     <div className="absolute left-[40px] transform -translate-x-1/2 flex flex-col items-center">
                                       <div className={cn(
                                         "w-6 h-6 rounded-full border-2 flex items-center justify-center z-10",
-                                        station.terminus ? "bg-blue-600 border-blue-700" : "bg-white border-blue-600",
+                                        station.terminus ? "bg-blue-600 border-blue-700" : "bg-primary border-blue-600",
                                         isFromStation && "ring-2 ring-offset-2 ring-blue-500",
                                         isToStation && "ring-2 ring-offset-2 ring-green-500"
                                       )}></div>
@@ -255,7 +255,7 @@ const MBTAPage = () => {
                                     {/* Station information card */}
                                     <div 
                                       className={cn(
-                                        "mx-2 mt-10 p-3 border rounded-lg shadow-sm cursor-pointer bg-white dark:bg-gray-800",
+                                        "mx-2 mt-10 p-3 border rounded-lg shadow-sm cursor-pointer bg-primary dark:bg-gray-800",
                                         "transition-all duration-200 hover:shadow-md",
                                         isSelected && "ring-2",
                                         isFromStation && "ring-blue-500",
@@ -294,7 +294,7 @@ const MBTAPage = () => {
                                             <span className="rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 p-0.5 text-xs">🚲</span>
                                           )}
                                           {station.pedal_park && (
-                                            <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 p-0.5 text-xs">🅿️</span>
+                                            <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-foreground p-0.5 text-xs">🅿️</span>
                                           )}
                                         </div>
                                       </div>
@@ -464,7 +464,7 @@ const MBTAPage = () => {
                               <span>Bike Parking</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 p-0.5 text-xs">🅿️</span>
+                              <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-foreground p-0.5 text-xs">🅿️</span>
                               <span>Pedal Park</span>
                             </div>
                           </div>

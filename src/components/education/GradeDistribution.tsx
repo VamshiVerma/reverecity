@@ -64,7 +64,7 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
   return (
     <Card className="h-full overflow-hidden bg-card border-gray-800">
       <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-        <CardTitle className="text-xl font-bold text-white">Grade Level Distribution</CardTitle>
+        <CardTitle className="text-xl font-bold text-foreground">Grade Level Distribution</CardTitle>
       </CardHeader>
       <CardContent className="p-4">
         <ScrollArea className="h-[280px]">
@@ -112,15 +112,15 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
         <div className="flex justify-center gap-6 mt-4">
           <div className="flex items-center">
             <div className="h-3 w-3 rounded-full bg-[#9b87f5] mr-2"></div>
-            <span className="text-xs text-gray-300">Elementary (PK-5)</span>
+            <span className="text-xs text-foreground/80">Elementary (PK-5)</span>
           </div>
           <div className="flex items-center">
             <div className="h-3 w-3 rounded-full bg-[#1EAEDB] mr-2"></div>
-            <span className="text-xs text-gray-300">Middle (6-8)</span>
+            <span className="text-xs text-foreground/80">Middle (6-8)</span>
           </div>
           <div className="flex items-center">
             <div className="h-3 w-3 rounded-full bg-[#BB86FC] mr-2"></div>
-            <span className="text-xs text-gray-300">High (9-12)</span>
+            <span className="text-xs text-foreground/80">High (9-12)</span>
           </div>
         </div>
       </CardContent>

@@ -1,651 +1,259 @@
-import { useState } from "react";
-import LiveSnapshot from "@/components/LiveSnapshot";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Mic } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import StatCard from "@/components/cards/StatCard";
-import LineChart from "@/components/charts/LineChart";
-import PieChart from "@/components/charts/PieChart";
-import CategoryCard from "@/components/cards/CategoryCard";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Building,
-  Bus,
-  CloudSun,
-  BookOpen,
-  Shield,
-  Heart,
-  PieChart as PieChartIcon,
-  Zap,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Lightbulb,
-  BarChart3,
-  ArrowRight
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { usePulse } from "@/lib/usePulse";
 import { cn } from "@/lib/utils";
-import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "@/components/ui/navigation-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// Use actual data from other sections
-const KeyCategories = [
-  { 
-    name: "Budget", 
-    path: "/budget", 
-    icon: PieChartIcon, 
-    color: "bg-indigo-500/10 text-indigo-500",
-    description: "Municipal spending and finances"
-  },
-  { 
-    name: "Revenue", 
-    path: "/revenue", 
-    icon: DollarSign,
-    color: "bg-emerald-500/10 text-emerald-500",
-    description: "City income sources and financial resources"
-  },
-  { 
-    name: "Public Safety", 
-    path: "/crime", 
-    icon: Shield,
-    color: "bg-orange-500/10 text-orange-500",
-    description: "Safety and security statistics"
-  },
-  { 
-    name: "Education", 
-    path: "/education", 
-    icon: BookOpen,
-    color: "bg-sky-500/10 text-sky-500",
-    description: "Schools and educational metrics"
-  },
-  { 
-    name: "Weather", 
-    path: "/weather", 
-    icon: CloudSun,
-    color: "bg-amber-500/10 text-amber-500",
-    description: "Climate conditions and forecasts"
-  },
-  { 
-    name: "Economic Dev", 
-    path: "/economic", 
-    icon: TrendingUp,
-    color: "bg-rose-500/10 text-rose-500",
-    description: "Business growth and development"
-  }
-];
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://ckwiryfnnguarcsgiuws.supabase.co";
 
-// Using verified project data from the provided document
-const CityProjectHighlights = [
-  {
-    title: "Wonderland High School",
-    description: "New high school for 2,450 students on 34-acre Wonderland site",
-    status: 30,
-    timeframe: "2024-2027"
-  },
-  {
-    title: "Suffolk Downs Development",
-    description: "160-acre mixed-use project with 5.8M sq ft space including biotech",
-    status: 15,
-    timeframe: "2023-2028"
-  },
-  {
-    title: "Waterfront Square",
-    description: "1,172 residential units, 172-room Marriott Hotel",
-    status: 60,
-    timeframe: "2022-2025"
-  },
-  {
-    title: "Water/Sewer Upgrades",
-    description: "Infrastructure to prevent illegal sanitary sewer overflows",
-    status: 40,
-    timeframe: "2023-2026"
-  }
-];
-
-// Data from various pages - updated with actual figures
-const KeyMetrics = {
-  population: {
-    current: 57954, // Updated to 2023 population figure
-    change: 2.1,
-    timeDescription: "Since 2023" // Fixed: Changed from "Since 2020" to "Since 2023"
-  },
-  budget: {
-    current: 274400000, // FY2025 budget
-    change: 3.2,
-    timeDescription: "YoY increase"
-  },
-  housingPrice: {
-    current: 655000, // From Housing page
-    change: -0.76, // From Housing page
-    timeDescription: "Monthly change"
-  },
-  unemployment: {
-    current: 4.1, // From Economy page
-    change: -0.5,
-    timeDescription: "Last quarter"
-  }
+type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
+type Snapshot = {
+  weather: { temp: number; feels: number; conditions: string; hi: number; lo: number; alerts: string[]; asOf: string; days?: { date: string; hi: number; lo: number; conditions: string; precipprob: number }[] } | null;
+  police: { calls7d: number; prev7d: number; since: string; through: string; topCategory: string | null; daily: { d: string; n: number }[] } | null;
+  mbta: { status: string; alerts: { effect: string; header: string }[]; stations?: Station[]; asOf: string };
+  budget: Record<string, { name: string; amount: number; prior: number; page: number; url: string } | null>;
 };
+type Dept = { name: string; recommended: number; prior_adopted: number | null; page: number; source_url: string };
+type Home = { place: string; metric: string; value: number; month: string };
 
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) {
-    return `$${(num / 1000000).toFixed(1)}M`;
-  } else if (num >= 1000) {
-    return `$${(num / 1000).toFixed(0)}K`;
-  } else {
-    return num.toLocaleString();
-  }
-};
+const ask = (detail?: { q?: string; voice?: boolean }) => window.dispatchEvent(new CustomEvent("revere:ask", { detail }));
+const fmtDay = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+const money = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`);
+const mins = (m: number | null) => (m == null ? "—" : m <= 0 ? "Now" : `${m} min`);
+const tidy = (s: string) => s.replace(/^Dept\. of /i, "").replace(/ And /g, " and ");
 
-const getStatusColor = (status: number): string => {
-  if (status >= 75) return "bg-emerald-500";
-  if (status >= 50) return "bg-amber-500";
-  return "bg-indigo-500";
-};
+function greeting() {
+  const h = Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" }));
+  return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
 
-// Health data from the Health page
-const healthCoverageData = [
-  { name: "Employer Coverage", value: 37.9 },
-  { name: "Medicaid", value: 32.9 },
-  { name: "Medicare", value: 9.6 },
-  { name: "Non-Group", value: 13.8 },
-  { name: "Military or VA", value: 0.4 },
-  { name: "Uninsured", value: 5.4 }
-];
+export default function Index() {
+  const [s, setS] = useState<Snapshot | null>(null);
+  const [err, setErr] = useState(false);
+  const [depts, setDepts] = useState<Dept[]>([]);
+  const [homes, setHomes] = useState<Home[]>([]);
+  const pulse = usePulse();
+  const reduce = useReducedMotion();
 
-// Updated budget allocation from Budget page based on FY2025 highlight (44% to education)
-const budgetAllocationData = [
-  { name: "Education", value: 44, color: "#4f46e5" }, 
-  { name: "Public Safety", value: 18, color: "#059669" }, 
-  { name: "Infrastructure", value: 20, color: "#0284c7" }, 
-  { name: "Health", value: 12, color: "#d946ef" }, 
-  { name: "Admin & Other", value: 6, color: "#f59e0b" }, 
-];
+  useEffect(() => {
+    let alive = true;
+    const load = () => fetch(`${SUPABASE_URL}/functions/v1/city-snapshot`).then((r) => r.json()).then((j) => alive && setS(j)).catch(() => alive && setErr(true));
+    load();
+    const id = setInterval(load, 60_000);
+    supabase.from("budget_departments" as any).select("name,recommended,prior_adopted,page,source_url").eq("fiscal_year", 2027).order("recommended", { ascending: false }).limit(6)
+      .then(({ data }) => alive && setDepts((data as unknown as Dept[]) || []));
+    const since = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10);
+    supabase.from("housing_market" as any).select("place,metric,value,month").in("place", ["Revere", "Chelsea", "East Boston", "Everett"]).gte("month", since).order("month")
+      .then(({ data }) => alive && setHomes((data as unknown as Home[]) || []));
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
-// Updated revenue data from Revenue page
-const revenueSourcesData = [
-  { name: "Property Tax", value: 67, color: "#4f46e5" }, 
-  { name: "State Aid", value: 25, color: "#059669" }, 
-  { name: "Local Receipts", value: 8, color: "#0284c7" }, 
-];
+  const police = s?.police;
+  const wow = police && police.prev7d ? ((police.calls7d - police.prev7d) / police.prev7d) * 100 : null;
+  const calls = pulse.filter((p) => p.kind === "police").slice(0, 5);
+  const rb = s?.mbta.stations?.find((x) => x.id === "place-rbmnl");
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+  // The one sentence under the greeting, built from today's data.
+  const today = useMemo(() => {
+    if (!s) return null;
+    const parts: string[] = [];
+    if (s.weather) parts.push(`${Math.round(s.weather.temp)}° and ${s.weather.conditions.toLowerCase()}`);
+    parts.push(s.mbta.alerts.length ? `the Blue Line has ${s.mbta.alerts.length === 1 ? "an alert" : `${s.mbta.alerts.length} alerts`}` : "Blue Line trains are running normally");
+    if (s.weather?.alerts.length) parts.push(`a ${s.weather.alerts[0]} is in effect`);
+    const t = parts.join(", ");
+    return t.charAt(0).toUpperCase() + t.slice(1) + ".";
+  }, [s]);
+
+  const housing = useMemo(() => {
+    const series = (place: string, metric: string) => homes.filter((h) => h.place === place && h.metric === metric);
+    return ["Revere", "East Boston", "Everett", "Chelsea"].map((p) => {
+      const v = series(p, "zhvi"), r = series(p, "zori");
+      return { place: p, value: v.at(-1), rent: r.at(-1), was: v.length > 12 ? v[v.length - 13] : undefined };
+    });
+  }, [homes]);
+
+  const rise = (i: number) => (reduce ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.05 + i * 0.07, duration: 0.5, ease: [0.22, 1, 0.36, 1] } });
 
   return (
-    <DashboardLayout pageTitle="City Overview">
-      {/* City Header with Key Stats */}
-      <div className="relative mb-8 overflow-hidden rounded-2xl border border-white/10 shadow-lift">
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(212_65%_20%)] via-[hsl(216_55%_12%)] to-[hsl(222_45%_8%)]"></div>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(75% 130% at 12% -10%, hsl(199 91% 56% / 0.40), transparent 58%), radial-gradient(60% 110% at 105% 110%, hsl(24 94% 60% / 0.18), transparent 55%)",
-          }}
-        ></div>
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
-
-        <div className="relative p-6 md:p-8">
-          <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
-                <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-70 motion-reduce:hidden" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" /></span>
-                Live · Revere, Massachusetts
-              </div>
-              <h1 className="font-display text-4xl font-semibold tracking-tight text-white md:text-5xl">
-                Your city, <span className="text-gradient">in plain English.</span>
-              </h1>
-              <p className="mt-3 text-[15px] leading-relaxed text-white/75">
-                Police logs, the city budget, the Blue Line and the weather, pulled from the official sources, kept current
-                automatically, and answerable by text or voice.
-              </p>
-            </div>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent("revere:ask"))}
-              className="group inline-flex shrink-0 items-center gap-3 self-start rounded-full bg-white px-2 py-2 pr-5 text-sm font-semibold text-slate-900 shadow-[0_12px_40px_-12px_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 lg:self-auto"
-            >
-              <span className="orb h-8 w-8" />
-              Ask Revere anything
-              <kbd className="rounded-md bg-slate-900/10 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">/</kbd>
+    <DashboardLayout pageTitle="Overview">
+      <div className="mx-auto w-full max-w-[1100px] pt-2 md:pt-6">
+        <motion.header {...rise(0)} className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-serif-display text-[40px] leading-[1.02] text-foreground md:text-[56px]">{greeting()}, Revere.</h1>
+            <p className="mt-3 max-w-[640px] text-[18px] leading-snug text-foreground md:text-[20px]">
+              {today ?? <span className="text-muted-foreground">Checking the city's live feeds…</span>}
+            </p>
+            <p className="mt-1.5 text-[14px] text-muted-foreground">
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={() => ask()} className="h-11 rounded-full bg-primary px-5 text-[15px] font-medium text-primary-foreground transition-transform active:scale-[0.97]">Ask a question</button>
+            <button onClick={() => ask({ voice: true })} className="flex h-11 items-center gap-2 rounded-full bg-secondary px-4 text-[15px] font-medium text-foreground transition-colors hover:bg-accent">
+              <Mic className="h-4 w-4" /> Talk
             </button>
           </div>
+        </motion.header>
 
-          <LiveSnapshot />
+        {err && !s && <p className="mt-10 rounded-[22px] bg-card p-5 text-[15px] text-muted-foreground">The live feeds aren't answering right now. The pages still work; numbers will appear when the connection returns.</p>}
+
+        <div className="mt-12 grid grid-cols-2 gap-4 lg:grid-cols-12">
+          <Tile i={1} rise={rise} to="/weather" label="Weather now" value={s?.weather ? `${Math.round(s.weather.temp)}°` : null}
+            caption={s?.weather ? `High ${Math.round(s.weather.hi)}°, low ${Math.round(s.weather.lo)}° · feels ${Math.round(s.weather.feels)}°` : ""} />
+          <Tile i={2} rise={rise} to="/mbta" label="Next train, Revere Beach" value={s ? mins(rb?.toBowdoin ?? null) : null}
+            caption={s ? `Toward Boston · Wonderland-bound ${mins(rb?.toWonderland ?? null).toLowerCase()}` : ""} />
+          <Tile i={3} rise={rise} to="/police-logs" label="Police calls, 7 days" value={police ? police.calls7d.toLocaleString("en-US") : null}
+            caption={police ? `${fmtDay(police.since)}–${fmtDay(police.through)}${wow != null ? ` · ${Math.abs(wow).toFixed(0)}% ${wow > 0 ? "more" : "fewer"} than the week before` : ""}` : ""} />
+          <Tile i={4} rise={rise} to="/budget" label="School budget, FY2027" value={s?.budget.school ? money(s.budget.school.amount) : null}
+            caption={s?.budget.school ? `The city's largest line · budget p. ${s.budget.school.page}` : ""} />
         </div>
-      </div>
 
-      {/* Main Content Tabs - Improved UI with full width */}
-      <Tabs defaultValue="overview" className="mb-6" onValueChange={setActiveTab}>
-        <div className="flex justify-between items-center mb-6">
-          <TabsList className="w-full max-w-full">
-            <TabsTrigger value="overview" className="flex-1">City Overview</TabsTrigger>
-            <TabsTrigger value="projects" className="flex-1">Key Projects</TabsTrigger>
-            <TabsTrigger value="insights" className="flex-1">Data Insights</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="overview" className="space-y-8">
-          {/* Key Departments Section - Using compact cards */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="eyebrow mb-1">Explore</p>
-                <h2 className="font-display text-2xl font-semibold tracking-tight">Key City Departments</h2>
-              </div>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <motion.section {...rise(5)} className="rounded-[22px] bg-card p-5 md:p-6 lg:col-span-9">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[16px] font-semibold text-foreground">The Blue Line through Revere</h2>
+              <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <span className={cn("h-2 w-2 rounded-full", s?.mbta.alerts.length ? "bg-warning" : "bg-success")} />
+                {s ? `${s.mbta.status} · updated ${fmtTime(s.mbta.asOf)}` : "Loading"}
+              </span>
             </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {KeyCategories.map((category, index) => (
-                <a key={index} href={category.path} className="group block">
-                  <Card className="overflow-hidden transition-all duration-300 hover:shadow-md hover:border-primary/30 dark:hover:border-primary/30 h-full">
-                    <CardHeader className={`border-b border-gray-100 dark:border-gray-800 ${category.color.split(' ')[0]} p-4`}>
-                      <div className="flex items-center justify-between">
-                        <div className={`p-2 rounded-md ${category.color}`}>
-                          <category.icon className="h-5 w-5" />
-                        </div>
-                        <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                      </div>
-                      <CardTitle className="mt-2 text-base">{category.name}</CardTitle>
-                    </CardHeader>
-                  </Card>
-                </a>
+            <BlueLine stations={s?.mbta.stations} />
+            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[14px] bg-background px-4 py-3 text-[14px]">
+              <span className="text-muted-foreground">Buses through Revere</span>
+              {["110", "116", "117", "119", "411", "426", "450"].map((r) => <span key={r} className="tnum font-medium text-foreground">{r}</span>)}
+              <Link to="/mbta" className="ml-auto text-[13px] text-muted-foreground hover:text-foreground">Live times</Link>
+            </div>
+            {!!s?.mbta.alerts.length && <p className="mt-5 rounded-[14px] bg-background px-4 py-3 text-[14px] text-foreground">{s.mbta.alerts[0].header}</p>}
+          </motion.section>
+
+          <motion.section {...rise(6)} className="rounded-[22px] bg-card p-5 lg:col-span-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[16px] font-semibold text-foreground">This week</h2>
+              <Link to="/weather" className="text-[13px] text-muted-foreground hover:text-foreground">Forecast</Link>
+            </div>
+            <ul className="mt-3 space-y-1">
+              {(s?.weather?.days ?? []).slice(1, 5).map((d) => (
+                <li key={d.date} className="flex items-center justify-between py-2 text-[15px]">
+                  <span className="w-11 text-muted-foreground">{new Date(d.date + "T12:00").toLocaleDateString("en-US", { weekday: "short" })}</span>
+                  <span className="min-w-0 flex-1 truncate px-2 text-foreground">{d.precipprob >= 40 ? `${d.precipprob}% rain` : d.conditions}</span>
+                  <span className="tnum text-foreground">{Math.round(d.hi)}°<span className="text-muted-foreground"> {Math.round(d.lo)}°</span></span>
+                </li>
+              ))}
+              {!s && [0, 1, 2, 3].map((i) => <li key={i} className="skeleton h-9" />)}
+            </ul>
+          </motion.section>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <Panel i={7} rise={rise} title="From the police log" meta={police ? `Notable calls · latest log runs through ${fmtDay(police.through)}` : ""} to="/police-logs" span="lg:col-span-6">
+            {calls.map((c) => (
+              <Row key={c.id} to="/police-logs" left={c.text.split(" · ")[0]} sub={c.text.split(" · ").slice(1).join(" · ")} right={c.tag} muted />
+            ))}
+            {!calls.length && <Empty text="No notable calls in the latest log." />}
+          </Panel>
+          <Panel i={8} rise={rise} title="Where the money goes" meta="FY2027 adopted budget · largest departments" to="/budget" span="lg:col-span-6">
+            {depts.slice(0, 5).map((d) => {
+              const ch = d.prior_adopted ? ((d.recommended - d.prior_adopted) / d.prior_adopted) * 100 : null;
+              return <Row key={d.name} href={`${d.source_url}#page=${d.page}`} left={tidy(d.name)} sub={`Budget p. ${d.page}${ch != null ? ` · ${ch >= 0 ? "+" : "−"}${Math.abs(ch).toFixed(1)}% from FY2026` : ""}`} right={money(d.recommended)} />;
+            })}
+            {!depts.length && <Empty text="Loading the budget…" />}
+          </Panel>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <Panel i={9} rise={rise} title="What homes cost" meta={housing[0]?.value ? `Zillow estimates · ${new Date(housing[0].value.month + "T12:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}` : ""} to="/housing" span="lg:col-span-6">
+            {housing.filter((h) => h.value).map((h) => {
+              const yoy = h.was ? ((h.value!.value - h.was.value) / h.was.value) * 100 : null;
+              return <Row key={h.place} to="/housing" left={h.place} sub={`${h.rent ? `Rent $${h.rent.value.toLocaleString("en-US")}/mo` : "No rent index"}${yoy != null ? ` · ${yoy >= 0 ? "+" : "−"}${Math.abs(yoy).toFixed(1)}% in a year` : ""}`} right={`$${Math.round(h.value!.value / 1000)}K`} />;
+            })}
+            {!homes.length && <Empty text="Loading housing data…" />}
+          </Panel>
+          <motion.section {...rise(10)} className="rounded-[22px] bg-card p-5 lg:col-span-6">
+            <h2 className="text-[16px] font-semibold text-foreground">Ask it the way you'd ask a neighbor</h2>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">Type or talk. Every answer shows where the facts came from.</p>
+            <div className="mt-3 grid gap-2">
+              {["Is anything going on near Revere Beach this week?", "When is the next train to Boston from Beachmont?", "How much does the city spend on snow and ice?", "What's the rent like compared to Chelsea?"].map((q) => (
+                <button key={q} onClick={() => ask({ q })} className="group flex min-h-[52px] items-center justify-between rounded-[14px] bg-background px-4 text-left text-[15px] text-foreground transition-colors hover:bg-secondary">
+                  <span className="truncate">{q}</span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </button>
               ))}
             </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Budget Allocation</CardTitle>
-                <CardDescription>Distribution across major departments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-square max-h-80 w-full">
-                  <PieChart
-                    data={budgetAllocationData}
-                    height={320}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Sources</CardTitle>
-                <CardDescription>Where city funding comes from</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-square max-h-80 w-full">
-                  <PieChart
-                    data={revenueSourcesData}
-                    height={320}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Health & Education Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Public Schools"
-              value="11"
-              icon={<BookOpen size={20} />}
-              footnote="Number of public schools in Revere"
-            />
-            <StatCard
-              title="Health Coverage"
-              value="94.6%"
-              icon={<Heart size={20} />}
-              footnote="Percentage with health insurance"
-            />
-            <StatCard
-              title="Public Safety"
-              value="$12M"
-              icon={<Shield size={20} />}
-              footnote="Annual public safety budget"
-            />
-            <StatCard
-              title="Full-Time Staff"
-              value="1,033"
-              icon={<Users size={20} />}
-              footnote="City employees across 22 departments"
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="projects" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {CityProjectHighlights.map((project, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="bg-background">
-                      {project.timeframe}
-                    </Badge>
-                  </div>
-                  <CardTitle className="mt-2">{project.title}</CardTitle>
-                  <CardDescription>{project.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Capital Improvement Projects</CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                Current fiscal year capital improvement budget: $15 million for 10 infrastructure projects
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Projects</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">Public Works</TableCell>
-                    <TableCell>Water/Sewer Upgrades</TableCell>
-                    <TableCell className="text-right">In Progress</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Education</TableCell>
-                    <TableCell>Wonderland High School</TableCell>
-                    <TableCell className="text-right">Planning</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Public Health</TableCell>
-                    <TableCell>Health & Wellness Center</TableCell>
-                    <TableCell className="text-right">Construction</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Infrastructure</TableCell>
-                    <TableCell>Road Improvements</TableCell>
-                    <TableCell className="text-right">Ongoing</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="insights" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-sky-500/10 text-sky-500 hover:bg-sky-500/20">Demographics</Badge>
-                  <span className="text-sm text-muted-foreground">May 2025</span>
-                </div>
-                <CardTitle className="mt-2">Foreign-Born Population Trends</CardTitle>
-                <CardDescription>Analysis based on demographic data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  43.2% of Revere residents (approximately 23,000 people) were born outside of the United States, 
-                  much higher than the national average of 13.8%. This percentage decreased slightly 
-                  from 43.8% in 2022 to the current figure in 2023, representing a 
-                  0.6% decline. The city continues to be culturally diverse, with significant immigrant communities.
-                </p>
-              </CardContent>
-              <CardFooter className="border-t">
-                <Button variant="outline" size="sm" asChild className="ml-auto">
-                  <a href="/demographics">
-                    <ArrowRight className="mr-2 h-4 w-4" />
-                    View Demographics
-                  </a>
-                </Button>
-              </CardFooter>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-violet-500/80 to-purple-500/80 text-white">
-                <CardTitle className="text-white">Health Insurance Coverage</CardTitle>
-                <CardDescription className="text-white/80">Distribution by type</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-3">
-                  {healthCoverageData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <span className="text-sm">{item.name}</span>
-                      <div className="flex items-center">
-                        <div className="w-32 h-2 bg-gray-200 rounded-full mr-2">
-                          <div 
-                            className="h-full bg-purple-600 rounded-full" 
-                            style={{ width: `${item.value}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium">{item.value}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20">Budget</Badge>
-                  <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <CardTitle className="mt-2">Budget Insights</CardTitle>
-                <CardDescription>FY2025 data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      The FY2025 budget totals $274.4 million, with nearly 44% dedicated to Revere Public Schools.
-                      Health insurance costs of $15 million cover 1,033 full-time employees, with a 5% premium increase due to 
-                      an aging workforce, representing a significant portion of the total budget.
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium">Education</p>
-                      <p className="text-muted-foreground">44% of budget</p>
-                    </div>
-                    <div>
-                      <p className="font-medium">Public Safety</p>
-                      <p className="text-muted-foreground">18% of budget</p>
-                    </div>
-                    <div>
-                      <p className="font-medium">Infrastructure</p>
-                      <p className="text-muted-foreground">20% of budget</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20">Economy</Badge>
-                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <CardTitle className="mt-2">Economic Indicators</CardTitle>
-                <CardDescription>Latest economic data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Revere's economy generates $408.8 million in total wages, with 1,235 business establishments benefiting from
-                      development projects. New growth revenue of $1.2 million from Suffolk Downs and other developments keeps the 
-                      tax levy below 2.5%, helping stabilize city finances.
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium">Employment</p>
-                      <p className="text-muted-foreground">1,033 city FTEs</p>
-                    </div>
-                    <div>
-                      <p className="font-medium">Business Growth</p>
-                      <p className="text-muted-foreground">1,235 establishments</p>
-                    </div>
-                    <div>
-                      <p className="font-medium">Unemployment</p>
-                      <p className="text-muted-foreground">4.1%</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Top Categories */}
-      <div className="mt-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="font-display text-2xl font-semibold tracking-tight">All Categories</h2>
-          <Badge variant="outline" className="text-xs">
-            12 departments
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <CategoryCard
-            title="Budget"
-            description="Municipal spending and finances"
-            icon={<PieChartIcon />}
-            stats={[
-              { label: "Total Budget", value: "$274.4M" },
-              { label: "Education", value: "44%" },
-              { label: "Infrastructure", value: "20%" },
-              { label: "Public Safety", value: "18%" }
-            ]}
-            to="/budget"
-          />
-          
-          <CategoryCard
-            title="Revenue"
-            description="City income and financial resources"
-            icon={<DollarSign />}
-            stats={[
-              { label: "Property Tax", value: "67%" },
-              { label: "State Aid", value: "25%" },
-              { label: "Local Receipts", value: "8%" },
-              { label: "New Growth", value: "$1.2M" }
-            ]}
-            to="/revenue"
-          />
-          
-          <CategoryCard
-            title="Demographics"
-            description="Population statistics and trends"
-            icon={<Users />}
-            stats={[
-              { label: "Population", value: "57,954" },
-              { label: "Foreign-Born", value: "43.2%" },
-              { label: "Citizenship", value: "73.9%" },
-              { label: "Hispanic Pop.", value: "38.6%" }
-            ]}
-            to="/demographics"
-          />
-          
-          <CategoryCard
-            title="Housing"
-            description="Residential properties and development"
-            icon={<Building />}
-            stats={[
-              { label: "Median Price", value: "$655,000" },
-              { label: "Monthly Change", value: "-0.76%" },
-              { label: "Days on Market", value: "35" },
-              { label: "Residential Units", value: "1,172+" }
-            ]}
-            to="/housing"
-          />
-          
-          <CategoryCard
-            title="Transportation"
-            description="Public transit and infrastructure"
-            icon={<Bus />}
-            stats={[
-              { label: "Bus Routes", value: "12" },
-              { label: "Rapid Transit", value: "Blue Line" },
-              { label: "Road Budget", value: "$5M" },
-              { label: "Infrastructure", value: "$9M" }
-            ]}
-            to="/transportation"
-          />
-          
-          <CategoryCard
-            title="Public Safety"
-            description="Safety and security statistics"
-            icon={<Shield />}
-            stats={[
-              { label: "Police Budget", value: "$7M" },
-              { label: "Fire Budget", value: "$5M" },
-              { label: "Total Budget", value: "$12M" },
-              { label: "RECC Budget", value: "$1.5M" }
-            ]}
-            to="/crime"
-          />
-          
-          <CategoryCard
-            title="Health"
-            description="Public health and healthcare access"
-            icon={<Heart />}
-            stats={[
-              { label: "Coverage Rate", value: "94.6%" },
-              { label: "Uninsured", value: "5.4%" },
-              { label: "Health Center", value: "$2M" },
-              { label: "Senior Programs", value: "50+" }
-            ]}
-            to="/health"
-          />
-          
-          <CategoryCard
-            title="Education"
-            description="Schools and educational metrics"
-            icon={<BookOpen />}
-            stats={[
-              { label: "Schools", value: "11" },
-              { label: "New HS Budget", value: "$50M" },
-              { label: "Student Count", value: "2,450" },
-              { label: "Ed. Budget %", value: "44%" }
-            ]}
-            to="/education"
-          />
-          
-          <CategoryCard
-            title="Economic Dev"
-            description="Business growth and development"
-            icon={<TrendingUp />}
-            stats={[
-              { label: "Total Wages", value: "$408.8M" },
-              { label: "Businesses", value: "1,235" },
-              { label: "ARPA Grants", value: "$10M" },
-              { label: "New Growth", value: "$1.2M" }
-            ]}
-            to="/economic"
-          />
+          </motion.section>
         </div>
       </div>
     </DashboardLayout>
   );
-};
+}
 
-export default Index;
+type RiseFn = (i: number) => object;
+
+function Tile({ i, rise, to, label, value, caption }: { i: number; rise: RiseFn; to: string; label: string; value: string | null; caption: string }) {
+  return (
+    <motion.div {...rise(i)} className="lg:col-span-3">
+      <Link to={to} className="flex h-[132px] flex-col rounded-[22px] bg-card p-4 transition-colors hover:bg-secondary">
+        <span className="text-[14px] text-muted-foreground">{label}</span>
+        {value == null ? <span className="skeleton mt-2 h-9 w-24" /> : <span className="tnum mt-1 text-[32px] leading-tight text-foreground">{value}</span>}
+        <span className="mt-auto line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{caption}</span>
+      </Link>
+    </motion.div>
+  );
+}
+
+function Panel({ i, rise, title, meta, to, span, children }: { i: number; rise: RiseFn; title: string; meta: string; to: string; span: string; children: React.ReactNode }) {
+  return (
+    <motion.section {...rise(i)} className={cn("rounded-[22px] bg-card p-5", span)}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[16px] font-semibold text-foreground">{title}</h2>
+        <Link to={to} className="shrink-0 text-[13px] text-muted-foreground hover:text-foreground">View all</Link>
+      </div>
+      {meta && <p className="mt-0.5 text-[13px] text-muted-foreground">{meta}</p>}
+      <div className="mt-3 space-y-2">{children}</div>
+    </motion.section>
+  );
+}
+
+function Row({ left, sub, right, to, href, muted }: { left: string; sub?: string; right: string; to?: string; href?: string; muted?: boolean }) {
+  const inner = (
+    <>
+      <span className="min-w-0">
+        <span className="block truncate text-[15px] text-foreground">{left}</span>
+        {sub && <span className="block truncate text-[13px] text-muted-foreground">{sub}</span>}
+      </span>
+      <span className={cn("tnum shrink-0 pl-3 text-right", muted ? "text-[13px] text-muted-foreground" : "text-[15px] text-foreground")}>{right}</span>
+    </>
+  );
+  const cls = "flex min-h-[63px] items-center justify-between rounded-[14px] bg-background px-4 py-2 transition-colors hover:bg-secondary";
+  return href ? <a href={href} target="_blank" rel="noreferrer" className={cls}>{inner}</a> : <Link to={to || "/"} className={cls}>{inner}</Link>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="rounded-[14px] bg-background px-4 py-5 text-[14px] text-muted-foreground">{text}</p>;
+}
+
+/** Revere's four Blue Line stations, north to south, with the next train each way. */
+function BlueLine({ stations }: { stations?: Station[] }) {
+  const list = stations ?? ["Wonderland", "Revere Beach", "Beachmont", "Suffolk Downs"].map((name) => ({ id: name, name, toBowdoin: null, toWonderland: null }));
+  return (
+    <div className="mt-7">
+      <div className="relative grid grid-cols-4">
+        <div className="absolute left-[12.5%] right-[12.5%] top-[9px] h-[6px] rounded-full bg-highlight" aria-hidden />
+        {list.map((st, i) => (
+          <div key={st.id} className="relative flex flex-col items-center px-1 text-center">
+            <motion.span className="relative z-[1] block h-6 w-6 rounded-full border-[5px] border-highlight bg-card"
+              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 420, damping: 18 }} />
+            <span className="mt-3 text-[15px] font-medium leading-tight text-foreground">{st.name}</span>
+            <dl className="mt-2 space-y-0.5 text-[13px]">
+              <div className="flex flex-wrap justify-center gap-x-1.5"><dt className="text-muted-foreground">To Boston</dt><dd className="tnum font-medium text-foreground">{stations ? mins(st.toBowdoin) : "…"}</dd></div>
+              <div className="flex flex-wrap justify-center gap-x-1.5"><dt className="text-muted-foreground">{i === 0 ? "Arriving" : "Northbound"}</dt><dd className="tnum font-medium text-foreground">{stations ? mins(st.toWonderland) : "…"}</dd></div>
+            </dl>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -142,18 +142,18 @@ const MBTAAlerts = ({ stationId, refreshInterval = 300000 }: MBTAAlertsProps) =>
     <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900">
       <CardHeader className="pb-3 border-b border-slate-800">
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2 text-white">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <Calendar className="h-6 w-6 text-red-500" />
             <span className="text-2xl font-bold">MBTA Service Alerts</span>
           </CardTitle>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground">
               Last updated: {format(lastRefreshed, "h:mm a")}
             </span>
             <Button 
               variant="outline" 
               size="sm"
-              className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"
+              className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-foreground"
               onClick={loadAlerts}
               disabled={isLoading}
             >
@@ -167,13 +167,13 @@ const MBTAAlerts = ({ stationId, refreshInterval = 300000 }: MBTAAlertsProps) =>
           <TabsList className="w-full bg-slate-900 border-b border-slate-800 rounded-none p-0">
             <TabsTrigger 
               value="current" 
-              className="flex-1 py-3 rounded-none data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-300"
+              className="flex-1 py-3 rounded-none data-[state=active]:bg-blue-600 data-[state=active]:text-foreground text-foreground/80"
             >
               Current Issues ({currentAlerts.length})
             </TabsTrigger>
             <TabsTrigger 
               value="upcoming" 
-              className="flex-1 py-3 rounded-none data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-300"
+              className="flex-1 py-3 rounded-none data-[state=active]:bg-blue-600 data-[state=active]:text-foreground text-foreground/80"
             >
               Upcoming Maintenance ({upcomingAlerts.length})
             </TabsTrigger>
@@ -183,32 +183,32 @@ const MBTAAlerts = ({ stationId, refreshInterval = 300000 }: MBTAAlertsProps) =>
             {isLoading ? (
               <div className="flex items-center justify-center py-12 bg-slate-900">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                <span className="ml-3 text-slate-400">Loading alerts...</span>
+                <span className="ml-3 text-muted-foreground">Loading alerts...</span>
               </div>
             ) : displayedAlerts.length > 0 ? (
               <div className="divide-y divide-slate-800">
                 {displayedAlerts.map((alert) => (
                   <Accordion type="single" collapsible className="w-full" key={alert.id}>
                     <AccordionItem value={alert.id} className="border-b-0">
-                      <AccordionTrigger className="px-4 py-5 hover:no-underline hover:bg-slate-800/50 text-white">
+                      <AccordionTrigger className="px-4 py-5 hover:no-underline hover:bg-slate-800/50 text-foreground">
                         <div className="flex items-start gap-4 text-left">
                           {getAlertIcon(alert.type)}
                           <div>
-                            <div className="font-medium text-white">{alert.header}</div>
+                            <div className="font-medium text-foreground">{alert.header}</div>
                             <div className="flex items-center gap-2 mt-1.5">
-                              <Badge variant="outline" className="bg-slate-800 text-xs font-normal text-slate-300 border-slate-700">
+                              <Badge variant="outline" className="bg-slate-800 text-xs font-normal text-foreground/80 border-slate-700">
                                 {formatAlertType(alert.type)}
                               </Badge>
                             </div>
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="bg-slate-800/50 px-4 pb-5 pt-1 text-slate-300">
+                      <AccordionContent className="bg-slate-800/50 px-4 pb-5 pt-1 text-foreground/80">
                         <div className="pl-9 space-y-4">
                           {alert.description && (
                             <p className="text-sm">{alert.description}</p>
                           )}
-                          <div className="space-y-2 text-xs text-slate-400">
+                          <div className="space-y-2 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <Clock className="h-3.5 w-3.5 text-blue-400" />
                               <span>Start: {formatDate(alert.start_time)}</span>
@@ -226,7 +226,7 @@ const MBTAAlerts = ({ stationId, refreshInterval = 300000 }: MBTAAlertsProps) =>
                                   <span className="block mb-1.5">Affected locations:</span>
                                   <div className="flex flex-wrap gap-1.5">
                                     {alert.stops.map(stop => (
-                                      <Badge key={stop} variant="secondary" className="bg-slate-700 text-slate-200 text-[10px]">
+                                      <Badge key={stop} variant="secondary" className="bg-slate-700 text-foreground text-[10px]">
                                         {stop.replace("place-", "").replace("door-", "")}
                                       </Badge>
                                     ))}
@@ -242,9 +242,9 @@ const MBTAAlerts = ({ stationId, refreshInterval = 300000 }: MBTAAlertsProps) =>
                 ))}
               </div>
             ) : (
-              <Alert className="m-4 bg-slate-800 border-slate-700 text-slate-300">
+              <Alert className="m-4 bg-slate-800 border-slate-700 text-foreground/80">
                 <Info className="h-5 w-5 text-blue-400" />
-                <AlertTitle className="text-white">No alerts</AlertTitle>
+                <AlertTitle className="text-foreground">No alerts</AlertTitle>
                 <AlertDescription>
                   {activeTab === "current" 
                     ? "There are currently no service alerts for MBTA stations."

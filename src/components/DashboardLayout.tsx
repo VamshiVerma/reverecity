@@ -38,7 +38,7 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
   }, [pageTitle]);
 
   return (
-    <div className="flex min-h-screen w-full bg-dark-bg">
+    <div className="flex min-h-screen w-full bg-background">
       <VisitorTracker />
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -46,15 +46,18 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
           <Header toggleSidebar={toggleSidebar} pageTitle={pageTitle} />
           <LiveTicker />
         </div>
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div key={pageTitle} className="mx-auto w-full max-w-7xl animate-rise space-y-6">
+        <main className="flex-1 px-4 py-6 md:px-7 md:py-7">
+          <div key={pageTitle} className="mx-auto w-full max-w-[1280px] animate-rise space-y-6">
             {children}
           </div>
         </main>
-        <footer className="border-t border-border/60 px-4 py-6 md:px-8">
-          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-xs text-muted-foreground sm:flex-row">
-            <p>© {new Date().getFullYear()} City of Revere, Massachusetts</p>
-            <p className="text-muted-foreground/70">Built on public data · Updated automatically</p>
+        <footer className="border-t border-border px-4 py-10 md:px-7">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <p className="text-[40px] font-semibold leading-none tracking-tight text-foreground md:text-[56px]">Revere<span className="text-highlight">.</span>City</p>
+            <p className="max-w-md text-[13px] leading-relaxed text-muted-foreground">
+              An independent guide to Revere, Massachusetts. Figures come from the City's adopted budgets, the Revere Police public log, the MBTA,
+              the National Weather Service, Open-Meteo and Zillow Research, and each one links to its source.
+            </p>
           </div>
         </footer>
       </div>

@@ -16,11 +16,11 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-bg text-light-text">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg text-foreground">
       <div className="text-center p-8 max-w-md glass-card rounded-lg animate-fade-in">
         <h1 className="text-6xl font-bold mb-4 text-highlight">404</h1>
         <p className="text-xl mb-6">Page not found</p>
-        <p className="text-gray-400 mb-8">
+        <p className="text-muted-foreground mb-8">
           The page you are looking for doesn't exist or has been moved.
         </p>
         <Button asChild>

@@ -30,8 +30,8 @@ export default function SchoolCard({ school }: SchoolCardProps) {
   return (
     <Card className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.01] bg-card border-gray-800">
       <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-        <CardTitle className="text-xl font-bold text-white">{school.name}</CardTitle>
-        <CardDescription className="text-gray-300 flex items-center mt-2">
+        <CardTitle className="text-xl font-bold text-foreground">{school.name}</CardTitle>
+        <CardDescription className="text-foreground/80 flex items-center mt-2">
           <MapPin className="h-4 w-4 mr-1" /> {school.address}
         </CardDescription>
       </CardHeader>
@@ -39,32 +39,32 @@ export default function SchoolCard({ school }: SchoolCardProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-highlight" />
-            <span className="text-sm text-gray-200">{school.phone}</span>
+            <span className="text-sm text-foreground">{school.phone}</span>
           </div>
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-highlight" />
-            <span className="text-sm text-gray-200">Grades {school.grades}</span>
+            <span className="text-sm text-foreground">Grades {school.grades}</span>
           </div>
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-highlight" />
-            <span className="text-sm text-gray-200">{school.enrollment} students</span>
+            <span className="text-sm text-foreground">{school.enrollment} students</span>
           </div>
           <div className="flex items-center gap-2">
             <Calculator className="h-4 w-4 text-highlight" />
-            <span className="text-sm text-gray-200">{school.studentTeacherRatio}:1 ratio</span>
+            <span className="text-sm text-foreground">{school.studentTeacherRatio}:1 ratio</span>
           </div>
         </div>
         
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-gray-300">Math Proficiency</span>
+              <span className="text-sm text-foreground/80">Math Proficiency</span>
               <span className={cn(
                 "text-sm font-semibold",
                 school.mathProficiency ? 
                   school.mathProficiency >= 40 ? "text-green-400" : 
                   school.mathProficiency >= 30 ? "text-yellow-400" : "text-red-400"
-                : "text-gray-400"
+                : "text-muted-foreground"
               )}>
                 {school.mathProficiency !== null ? `${school.mathProficiency}%` : "N/A"}
               </span>
@@ -84,13 +84,13 @@ export default function SchoolCard({ school }: SchoolCardProps) {
           
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-gray-300">Reading Proficiency</span>
+              <span className="text-sm text-foreground/80">Reading Proficiency</span>
               <span className={cn(
                 "text-sm font-semibold",
                 school.readingProficiency ? 
                   school.readingProficiency >= 40 ? "text-green-400" : 
                   school.readingProficiency >= 30 ? "text-yellow-400" : "text-red-400"
-                : "text-gray-400"
+                : "text-muted-foreground"
               )}>
                 {school.readingProficiency !== null ? `${school.readingProficiency}%` : "N/A"}
               </span>
@@ -110,7 +110,7 @@ export default function SchoolCard({ school }: SchoolCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0 px-6 pb-4">
-        <div className="w-full text-xs text-gray-400 text-center">
+        <div className="w-full text-xs text-muted-foreground text-center">
           {school.mathProficiency === null && school.readingProficiency === null ? 
             "Proficiency data not available" : ""}
         </div>

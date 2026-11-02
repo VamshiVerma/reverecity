@@ -23,9 +23,9 @@ const CategoryCard = ({ title, description, icon, stats, to, className }: Catego
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <div className="text-highlight text-xl">{icon}</div>
-            <h3 className="text-lg font-semibold text-light-text">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           </div>
-          <p className="mt-2 text-sm text-gray-400">{description}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
       
@@ -33,8 +33,8 @@ const CategoryCard = ({ title, description, icon, stats, to, className }: Catego
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           {stats.map((stat, index) => (
             <div key={index} className="flex flex-col">
-              <span className="text-xs text-gray-500">{stat.label}</span>
-              <span className="text-sm font-medium text-light-text">{stat.value}</span>
+              <span className="text-xs text-muted-foreground">{stat.label}</span>
+              <span className="text-sm font-medium text-foreground">{stat.value}</span>
             </div>
           ))}
         </div>

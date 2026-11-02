@@ -75,11 +75,11 @@ export default function HousingPage() {
     <DashboardLayout pageTitle="Housing">
       <div className="mx-auto max-w-6xl space-y-8 pb-16">
         <header className="space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Zillow Research data{latest ? ` · through ${monthLabel(latest.month, true)}` : ""} · refreshed monthly
           </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-white md:text-4xl">What it costs to live in Revere</h1>
-          <p className="max-w-2xl text-sm text-slate-300 md:text-base">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground md:text-4xl">What it costs to live in Revere</h1>
+          <p className="max-w-2xl text-sm text-foreground/80 md:text-base">
             Typical home values and rents for Revere (ZIP 02151), compared with neighboring communities. These are Zillow's market-wide estimates, not individual listings.
           </p>
         </header>
@@ -87,7 +87,7 @@ export default function HousingPage() {
         {error && <p className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">Housing data couldn't be loaded right now.</p>}
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {!rows && !error && [0, 1, 2, 3].map((i) => <div key={i} className="h-[128px] rounded-2xl border border-white/10 bg-white/[0.04] p-4"><div className="skeleton mb-3 h-3 w-24" /><div className="skeleton h-8 w-32" /></div>)}
+          {!rows && !error && [0, 1, 2, 3].map((i) => <div key={i} className="h-[128px] rounded-2xl border border-border bg-card p-4"><div className="skeleton mb-3 h-3 w-24" /><div className="skeleton h-8 w-32" /></div>)}
           {rows && latest && (
             <>
               <Stat i={0} icon={Home} label="Typical home value" value={usd(latest.value)} delta={change(rv, 12)} sub="vs a year ago" note={monthLabel(latest.month, true)} />
@@ -101,21 +101,21 @@ export default function HousingPage() {
         </section>
 
         {rows && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 md:p-6">
+          <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+              <div className="flex rounded-xl border border-border bg-card p-1">
                 {([["zhvi", "Home values"], ["zori", "Rents"]] as const).map(([k, l]) => (
                   <button key={k} onClick={() => setMetric(k)} aria-pressed={metric === k}
-                    className={cn("relative rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors", metric === k ? "text-white" : "text-slate-400 hover:text-slate-200")}>
-                    {metric === k && <motion.span layoutId="hm" className="absolute inset-0 rounded-lg bg-white/10 ring-1 ring-white/15" />}
+                    className={cn("relative rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors", metric === k ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                    {metric === k && <motion.span layoutId="hm" className="absolute inset-0 rounded-lg bg-secondary ring-1 ring-border" />}
                     <span className="relative">{l}</span>
                   </button>
                 ))}
               </div>
-              <div className="flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+              <div className="flex rounded-xl border border-border bg-card p-1">
                 {([5, 10] as const).map((y) => (
                   <button key={y} onClick={() => setRange(y)} aria-pressed={range === y}
-                    className={cn("rounded-lg px-3 py-1.5 text-sm font-medium", range === y ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200")}>{y} yrs</button>
+                    className={cn("rounded-lg px-3 py-1.5 text-sm font-medium", range === y ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground")}>{y} yrs</button>
                 ))}
               </div>
             </div>
@@ -126,7 +126,7 @@ export default function HousingPage() {
                   <button key={p} onClick={() => setShown(on ? shown.filter((x) => x !== p) : [...shown, p])} aria-pressed={on}
                     disabled={p === "Revere"}
                     className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition",
-                      on ? "border-white/25 bg-white/10 text-white" : "border-white/10 text-slate-400 hover:text-slate-200", p === "Revere" && "cursor-default")}>
+                      on ? "border-border bg-secondary text-foreground" : "border-border text-muted-foreground hover:text-foreground", p === "Revere" && "cursor-default")}>
                     <span className="h-2 w-2 rounded-full" style={{ background: on ? COLORS[p] : "transparent", boxShadow: `inset 0 0 0 1.5px ${COLORS[p]}` }} />{p}
                   </button>
                 );
@@ -149,16 +149,16 @@ export default function HousingPage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-muted-foreground">
               {metric === "zhvi" ? "Zillow Home Value Index: typical value of mid-tier single-family homes and condos, smoothed and seasonally adjusted." : "Zillow Observed Rent Index: typical asking rent across all rental homes. Some smaller areas start later because Zillow needs enough listings."}
             </p>
           </section>
         )}
 
         {rows && (
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <section className="overflow-hidden rounded-2xl border border-border bg-card">
             <div className="flex items-center justify-between px-5 pt-5">
-              <h2 className="font-display text-lg font-semibold text-white">Revere and its neighbors</h2>
+              <h2 className="font-display text-lg font-semibold text-foreground">Revere and its neighbors</h2>
               <button onClick={() => ask("How do Revere home prices and rents compare to Chelsea, Everett and East Boston?")} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-highlight hover:bg-highlight/10">
                 <Sparkles className="h-3.5 w-3.5" /> Ask about this
               </button>
@@ -166,7 +166,7 @@ export default function HousingPage() {
             <div className="overflow-x-auto">
               <table className="mt-3 w-full min-w-[560px] text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                     <th className="px-5 py-2.5 font-semibold">Place</th>
                     <th className="px-3 py-2.5 text-right font-semibold">Home value</th>
                     <th className="px-3 py-2.5 text-right font-semibold">1-yr</th>
@@ -174,27 +174,27 @@ export default function HousingPage() {
                     <th className="px-5 py-2.5 text-right font-semibold">1-yr</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.06]">
+                <tbody className="divide-y divide-border">
                   {[...table].sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).map((t) => (
                     <tr key={t.place} className={cn(t.place === "Revere" && "bg-highlight/[0.07]")}>
-                      <td className="px-5 py-3 font-medium text-white">
+                      <td className="px-5 py-3 font-medium text-foreground">
                         <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: COLORS[t.place] }} />{t.place}
-                        <span className="ml-2 font-mono text-[11px] text-slate-500">{ZIP[t.place]}</span>
+                        <span className="ml-2 font-mono text-[11px] text-muted-foreground">{ZIP[t.place]}</span>
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-100">{t.value ? usd(t.value) : "—"}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-foreground">{t.value ? usd(t.value) : "—"}</td>
                       <td className="px-3 py-3 text-right"><Pct v={t.vYoY} /></td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-100">{t.rent ? `${usd(t.rent)}/mo` : "—"}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-foreground">{t.rent ? `${usd(t.rent)}/mo` : "—"}</td>
                       <td className="px-5 py-3 text-right"><Pct v={t.rYoY} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="px-5 py-3 text-xs text-slate-500">“—” means Zillow doesn't publish a rent index for that ZIP code.</p>
+            <p className="px-5 py-3 text-xs text-muted-foreground">“—” means Zillow doesn't publish a rent index for that ZIP code.</p>
           </section>
         )}
 
-        <p className="text-xs leading-relaxed text-slate-500">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Source: <a href={ZILLOW} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-highlight hover:underline">Zillow Research, ZHVI and ZORI by ZIP code <ExternalLink className="h-3 w-3" /></a>.
           Values are estimates for the whole ZIP code and can differ from any single home's price. New data is pulled automatically each month after Zillow publishes it.
         </p>
@@ -204,18 +204,18 @@ export default function HousingPage() {
 }
 
 function Pct({ v }: { v: number | null }) {
-  if (v == null) return <span className="text-slate-500">—</span>;
-  return <span className={cn("text-xs font-semibold tabular-nums", v >= 0 ? "text-amber-300" : "text-emerald-300")}>{v >= 0 ? "+" : ""}{v.toFixed(1)}%</span>;
+  if (v == null) return <span className="text-muted-foreground">—</span>;
+  return <span className={cn("text-xs font-semibold tabular-nums", v >= 0 ? "text-foreground" : "text-foreground")}>{v >= 0 ? "+" : ""}{v.toFixed(1)}%</span>;
 }
 
 function Stat({ i, icon: Icon, label, value, delta, sub, note }: { i: number; icon: typeof Home; label: string; value: string; delta?: number | null; sub?: string; note?: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: "spring", stiffness: 260, damping: 26 }}
-      className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"><Icon className="h-3.5 w-3.5" />{label}</span>
-      <span className="mt-2 font-display text-3xl font-semibold tabular-nums text-white">{value}</span>
-      <span className="mt-1 text-xs text-slate-400">{delta != null && <><Pct v={delta} /> </>}{sub}</span>
-      {note && <span className="mt-auto pt-2 text-[11px] text-slate-500">{note}</span>}
+      className="flex flex-col rounded-2xl border border-border bg-card p-4">
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</span>
+      <span className="mt-2 font-display text-3xl font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="mt-1 text-xs text-muted-foreground">{delta != null && <><Pct v={delta} /> </>}{sub}</span>
+      {note && <span className="mt-auto pt-2 text-[11px] text-muted-foreground">{note}</span>}
     </motion.div>
   );
 }

@@ -19,6 +19,10 @@ Deno.serve(async (req) => {
     fetch("https://api-v3.mbta.com/alerts?filter[route]=Blue&filter[datetime]=NOW").then((r) => r.json()).catch(() => ({ data: [] })),
     fetch("https://api-v3.mbta.com/predictions?filter[stop]=place-rbmnl&filter[route]=Blue&sort=departure_time&page[limit]=6").then((r) => r.json()).catch(() => ({ data: [] })),
   ]);
+  // Next train each way at every Blue Line station in Revere, north to south.
+  const STATIONS = [["place-wondl", "Wonderland"], ["place-rbmnl", "Revere Beach"], ["place-bmmnl", "Beachmont"], ["place-sdmnl", "Suffolk Downs"]];
+  const stationPreds = await Promise.all(STATIONS.map(([id]) =>
+    fetch(`https://api-v3.mbta.com/predictions?filter[stop]=${id}&filter[route]=Blue&sort=departure_time&page[limit]=8`).then((r) => r.json()).catch(() => ({ data: [] }))));
 
   // Weather (refresh if older than an hour)
   let w = wx.data?.[0];
@@ -30,6 +34,7 @@ Deno.serve(async (req) => {
     temp: w.data.currentConditions.temp, feels: w.data.currentConditions.feelslike, conditions: w.data.currentConditions.conditions,
     icon: w.data.currentConditions.icon, hi: w.data.days?.[0]?.tempmax, lo: w.data.days?.[0]?.tempmin,
     alerts: (w.data.alerts || []).map((a: any) => a.event), asOf: w.fetched_at, source: "Open-Meteo · NWS",
+    days: (w.data.days || []).slice(0, 5).map((d: any) => ({ date: d.datetime, hi: d.tempmax, lo: d.tempmin, conditions: d.conditions, precipprob: d.precipprob })),
   } : null;
 
   // Police: last 7 days of the latest posted log
@@ -63,7 +68,13 @@ Deno.serve(async (req) => {
     const t = p.attributes.departure_time || p.attributes.arrival_time;
     return t ? { toward: p.attributes.direction_id === 0 ? "Bowdoin" : "Wonderland", mins: Math.round((new Date(t).getTime() - now) / 60e3) } : null;
   }).filter((x: any) => x && x.mins >= 0).slice(0, 4);
-  const mbta = { status: alerts.length ? "Disrupted" : "Normal service", alerts, next, station: STOPS["place-rbmnl"], asOf: new Date().toISOString(), source: "MBTA v3 API" };
+  const nextBy = (data: any[], dir: number) => {
+    const m = data.map((p: any) => ({ dir: p.attributes.direction_id, t: p.attributes.departure_time || p.attributes.arrival_time }))
+      .filter((p: any) => p.dir === dir && p.t).map((p: any) => Math.round((new Date(p.t).getTime() - now) / 60e3)).filter((x: number) => x >= 0);
+    return m.length ? m[0] : null;
+  };
+  const stations = STATIONS.map(([id, name], i) => ({ id, name, toBowdoin: nextBy(stationPreds[i].data || [], 0), toWonderland: nextBy(stationPreds[i].data || [], 1) }));
+  const mbta = { status: alerts.length ? "Disrupted" : "Normal service", alerts, next, stations, station: STOPS["place-rbmnl"], asOf: new Date().toISOString(), source: "MBTA v3 API" };
 
   // Budget headline figures (FY2027 adopted)
   const find = (re: RegExp) => (depts.data || []).find((d: any) => re.test(d.name));

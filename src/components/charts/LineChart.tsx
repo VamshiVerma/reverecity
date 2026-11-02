@@ -59,8 +59,8 @@ const LineChart = ({
     <div className={title ? "glass-card p-4 rounded-lg" : ""}>
       {title && (
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-light-text">{title}</h3>
-          <span className="text-xs text-gray-400">{timeframe}</span>
+          <h3 className="text-lg font-medium text-foreground">{title}</h3>
+          <span className="text-xs text-muted-foreground">{timeframe}</span>
         </div>
       )}
       

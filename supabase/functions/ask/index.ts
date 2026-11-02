@@ -17,6 +17,41 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 type Source = { label: string; detail?: string; url?: string; kind: string };
 type Msg = { role: "user" | "assistant"; content: string };
 
+// ---------- plain-language police wording ----------
+const ACTION_PLAIN: [RegExp, string][] = [
+  [/^services rendered/i, "officers helped"], [/^call log entry only/i, "logged only"], [/^report to follow/i, "report filed"],
+  [/referred to other agency/i, "referred to another agency"], [/^no action required/i, "no action needed"], [/^tow motor vehicle/i, "vehicle towed"],
+  [/^citation\/warning issued/i, "citation or warning issued"], [/^nothing showing/i, "officers found nothing"], [/^refused response/i, "help declined"],
+  [/^officer spoke to subject/i, "officer spoke with those involved"], [/^no service made/i, "papers not served"], [/^mva - papers exchanged/i, "drivers exchanged info"],
+  [/^arrest\(s\) made/i, "arrest made"], [/^(transported to hospital|ambulance transport)/i, "taken to hospital"], [/^building checked/i, "building checked"],
+  [/^unable to locate/i, "couldn't locate"], [/^be on the lookout/i, "lookout issued"], [/^(accidental trip|false alarm)/i, "false alarm"],
+  [/^medical aid/i, "medical aid given"], [/^parking ticker issued/i, "parking ticket issued"], [/^no violation observed/i, "no violation found"],
+  [/^paperwork served/i, "papers served"], [/^transported to court/i, "taken to court"],
+];
+function plainAction(a: string | null | undefined) {
+  const s = String(a || "").trim();
+  for (const [re, out] of ACTION_PLAIN) if (re.test(s)) return out;
+  return s.toLowerCase();
+}
+function plainReason(r: string | null | undefined) {
+  return String(r || "")
+    .replace(/\bMotor Vehicle Accident\b/gi, "Car crash")
+    .replace(/^MVA\s*[-,]?\s*/i, "Car crash, ")
+    .replace(/Hit & Run/gi, "hit-and-run")
+    .replace(/,\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+function time12(hhmm: string | null | undefined) {
+  const m = String(hhmm || "").match(/^(\d{2}):?(\d{2})/);
+  if (!m) return "";
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+function fmtShort(d: string) { return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
 // ---------- intent ----------
 function intents(q: string) {
   const s = q.toLowerCase();
@@ -249,7 +284,7 @@ Deno.serve(async (req) => {
 By type: ${police.byCat.map(([k, v]) => `${pretty(k)} ${v}`).join("; ")}.
 Busiest streets: ${police.byStreet.map(([k, v]) => `${title(k)} ${v}`).join("; ")}.
 Busiest hours: ${police.byHour.map(([k, v]) => `${k}:00 (${v})`).join(", ")}.
-Notable calls: ${police.notable.map((r) => `${fmtDate(r.log_date)} ${r.time_24h} ${title(r.call_reason)} → ${title(r.action)}${r.location_street ? " @ " + title(r.location_street) : ""}`).join(" | ")}`);
+Notable calls: ${police.notable.map((r) => `${fmtDate(r.log_date)} ${time12(r.time_24h)} ${plainReason(r.call_reason)} → ${plainAction(r.action)}${r.location_street ? " @ " + title(r.location_street) : ""}`).join(" | ")}`);
       police.sourceUrls.forEach((u: string) => {
         const f = decodeURIComponent(u.split("/").pop() || "");
         const m = f.match(/^(\d{2})-(\d{2})[^]*?-to-(\d{2})-(\d{2})/);
@@ -309,10 +344,9 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       // Grounded answer without an LLM: honest, structured, sourced.
       const parts: string[] = [];
       if (police) {
-        parts.push(`**Police activity${police.streets.length ? " around " + police.streets.map(title).join(", ") : " in Revere"}** — ${police.total.toLocaleString("en-US")} calls logged ${fmtDate(police.since)} to ${fmtDate(police.latestDate)} (latest posted RPD log).`);
-        if (police.byCat.length) parts.push(`- Most common: ${police.byCat.slice(0, 4).map(([k, v]) => `${pretty(k)} (${v})`).join(", ")}`);
-        if (police.byHour.length) parts.push(`- Busiest hours: ${police.byHour.slice(0, 3).map(([h]) => `${Number(h) % 12 || 12}${Number(h) < 12 ? "am" : "pm"}`).join(", ")}`);
-        police.notable.slice(0, 4).forEach((r) => parts.push(`- ${fmtDate(r.log_date)}, ${r.time_24h}: ${title(r.call_reason)}${r.location_street ? " on " + title(r.location_street) : ""} → ${title(r.action).toLowerCase()}`));
+        parts.push(`**${police.total.toLocaleString("en-US")} police calls${police.streets.length ? " around " + police.streets.slice(0, 3).map(title).join(", ") + (police.streets.length > 3 ? ` +${police.streets.length - 3} more` : "") : " in Revere"}** from ${fmtShort(police.since)} to ${fmtShort(police.latestDate)}, the most recent log the police department has posted.`);
+        if (police.byHour.length) parts.push(`Busiest around ${police.byHour.slice(0, 3).map(([h]) => `${Number(h) % 12 || 12} ${Number(h) < 12 ? "AM" : "PM"}`).join(", ")}. Recent calls worth knowing about:`);
+        police.notable.slice(0, 4).forEach((r) => parts.push(`- **${plainReason(r.call_reason)}**${r.location_street ? " on " + title(r.location_street) : ""} — ${plainAction(r.action)} *(${fmtShort(r.log_date)}, ${time12(r.time_24h)})*`));
       }
       if (weather) {
         const c = weather.current;

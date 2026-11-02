@@ -299,7 +299,7 @@ const BudgetChat: React.FC = () => {
                     Uploaded
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500">No file</div>
+                  <div className="text-sm text-muted-foreground">No file</div>
                 )}
               </div>
             </div>

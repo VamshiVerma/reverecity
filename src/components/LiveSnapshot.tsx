@@ -55,14 +55,14 @@ function Card({ i, icon: Icon, tone, label, children, foot, to }: { i: number; i
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 * i, type: "spring", stiffness: 240, damping: 26 }}
       whileHover={{ y: -3 }}
-      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.06] p-4 backdrop-blur-md transition-colors hover:border-white/25 hover:bg-white/[0.09]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-4 backdrop-blur-md transition-colors hover:border-input hover:bg-secondary"
     >
       <div className="mb-3 flex items-center gap-2">
         <span className={cn("grid h-7 w-7 place-items-center rounded-lg ring-1", tone)}><Icon className="h-4 w-4" /></span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">{label}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground/70">{label}</span>
       </div>
       <div className="flex-1">{children}</div>
-      <div className="mt-3 text-[11px] text-white/55">{foot}</div>
+      <div className="mt-3 text-[11px] text-foreground/55">{foot}</div>
     </motion.div>
   );
   return to ? <Link to={to} className="block h-full">{body}</Link> : body;
@@ -84,9 +84,9 @@ export default function LiveSnapshot() {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-[148px] rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+          <div key={i} className="h-[148px] rounded-2xl border border-border bg-card p-4">
             {!err && <><div className="skeleton mb-4 h-4 w-24" /><div className="skeleton mb-2 h-8 w-32" /><div className="skeleton h-3 w-40" /></>}
-            {err && <p className="text-xs text-white/60">Live data is temporarily unavailable.</p>}
+            {err && <p className="text-xs text-foreground/60">Live data is temporarily unavailable.</p>}
           </div>
         ))}
       </div>
@@ -100,63 +100,63 @@ export default function LiveSnapshot() {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Card i={0} icon={CloudSun} tone="bg-amber-400/15 text-amber-300 ring-amber-300/30" label="Weather now" to="/weather"
+      <Card i={0} icon={CloudSun} tone="bg-amber-400/15 text-foreground ring-amber-300/30" label="Weather now" to="/weather"
         foot={weather ? <>Open-Meteo · updated {fmtTime(weather.asOf)}</> : "Weather unavailable"}>
         {weather && (
           <>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-semibold tabular-nums text-white"><CountUp value={weather.temp} />°</span>
-              <span className="text-sm text-white/80">{weather.conditions}</span>
+              <span className="font-display text-4xl font-semibold tabular-nums text-foreground"><CountUp value={weather.temp} />°</span>
+              <span className="text-sm text-foreground/80">{weather.conditions}</span>
             </div>
-            <div className="mt-1 text-xs text-white/65">High {Math.round(weather.hi)}° · Low {Math.round(weather.lo)}° · feels {Math.round(weather.feels)}°</div>
+            <div className="mt-1 text-xs text-foreground/65">High {Math.round(weather.hi)}° · Low {Math.round(weather.lo)}° · feels {Math.round(weather.feels)}°</div>
             {!!weather.alerts.length && <div className="mt-2 rounded-md bg-red-500/20 px-2 py-1 text-[11px] font-semibold text-red-100">⚠ {weather.alerts.join(", ")}</div>}
           </>
         )}
       </Card>
 
-      <Card i={1} icon={TrainFront} tone="bg-sky-400/15 text-sky-300 ring-sky-300/30" label="Blue Line" to="/mbta"
+      <Card i={1} icon={TrainFront} tone="bg-sky-400/15 text-foreground ring-sky-300/30" label="Blue Line" to="/mbta"
         foot={<>MBTA live · {fmtTime(mbta.asOf)}</>}>
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             {!mbta.alerts.length && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />}
             <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", mbta.alerts.length ? "bg-amber-400" : "bg-emerald-400")} />
           </span>
-          <span className="font-display text-xl font-semibold text-white">{mbta.status}</span>
+          <span className="font-display text-xl font-semibold text-foreground">{mbta.status}</span>
         </div>
         {mbta.alerts.length ? (
-          <p className="mt-2 line-clamp-2 text-xs text-amber-100/90">{mbta.alerts[0].header}</p>
+          <p className="mt-2 line-clamp-2 text-xs text-foreground/90">{mbta.alerts[0].header}</p>
         ) : mbta.next.length ? (
-          <p className="mt-2 text-xs text-white/70">Revere Beach: {mbta.next.slice(0, 2).map((n) => `${n.toward} ${n.mins <= 0 ? "now" : n.mins + " min"}`).join(" · ")}</p>
+          <p className="mt-2 text-xs text-foreground/70">Revere Beach: {mbta.next.slice(0, 2).map((n) => `${n.toward} ${n.mins <= 0 ? "now" : n.mins + " min"}`).join(" · ")}</p>
         ) : (
-          <p className="mt-2 text-xs text-white/60">No active alerts on the Blue Line.</p>
+          <p className="mt-2 text-xs text-foreground/60">No active alerts on the Blue Line.</p>
         )}
       </Card>
 
-      <Card i={2} icon={ShieldCheck} tone="bg-rose-400/15 text-rose-300 ring-rose-300/30" label="Police log · 7 days" to="/police-logs"
+      <Card i={2} icon={ShieldCheck} tone="bg-rose-400/15 text-foreground ring-rose-300/30" label="Police log · 7 days" to="/police-logs"
         foot={police ? <>Revere PD public log · {fmtDay(police.since)}–{fmtDay(police.through)}</> : "No log data"}>
         {police && (
           <div className="flex items-end justify-between gap-2">
             <div>
-              <div className="font-display text-4xl font-semibold tabular-nums text-white"><CountUp value={police.calls7d} /></div>
-              <div className="mt-1 text-xs text-white/65">
-                calls{wow != null && <> · <span className={wow > 0 ? "text-rose-200" : "text-emerald-200"}>{wow > 0 ? "▲" : "▼"} {Math.abs(wow).toFixed(0)}% vs prior week</span></>}
+              <div className="font-display text-4xl font-semibold tabular-nums text-foreground"><CountUp value={police.calls7d} /></div>
+              <div className="mt-1 text-xs text-foreground/65">
+                calls{wow != null && <> · <span className={wow > 0 ? "text-foreground" : "text-foreground"}>{wow > 0 ? "▲" : "▼"} {Math.abs(wow).toFixed(0)}% vs prior week</span></>}
               </div>
-              {police.topCategory && <div className="mt-0.5 text-[11px] text-white/55">Most common: {pretty(police.topCategory)}</div>}
+              {police.topCategory && <div className="mt-0.5 text-[11px] text-foreground/55">Most common: {pretty(police.topCategory)}</div>}
             </div>
             <Spark points={police.daily.map((x) => x.n)} />
           </div>
         )}
       </Card>
 
-      <Card i={3} icon={Landmark} tone="bg-emerald-400/15 text-emerald-300 ring-emerald-300/30" label="FY2027 budget" to="/budget"
-        foot={school ? <a href={school.url} target="_blank" rel="noreferrer" className="hover:text-white" onClick={(e) => e.stopPropagation()}>Adopted budget, p. {school.page}{pol ? ` · p. ${pol.page}` : ""} ↗</a> : null}>
+      <Card i={3} icon={Landmark} tone="bg-emerald-400/15 text-foreground ring-emerald-300/30" label="FY2027 budget" to="/budget"
+        foot={school ? <a href={school.url} target="_blank" rel="noreferrer" className="hover:text-foreground" onClick={(e) => e.stopPropagation()}>Adopted budget, p. {school.page}{pol ? ` · p. ${pol.page}` : ""} ↗</a> : null}>
         {school && (
           <>
-            <div className="font-display text-3xl font-semibold tabular-nums text-white">
+            <div className="font-display text-3xl font-semibold tabular-nums text-foreground">
               $<CountUp value={school.amount / 1e6} format={(v) => v.toFixed(1)} />M
             </div>
-            <div className="mt-1 text-xs text-white/65">Schools{schoolPct != null && <> · {schoolPct >= 0 ? "+" : ""}{schoolPct.toFixed(1)}% vs FY26</>}</div>
-            <div className="mt-0.5 text-[11px] text-white/55">
+            <div className="mt-1 text-xs text-foreground/65">Schools{schoolPct != null && <> · {schoolPct >= 0 ? "+" : ""}{schoolPct.toFixed(1)}% vs FY26</>}</div>
+            <div className="mt-0.5 text-[11px] text-foreground/55">
               {pol && <>Police ${(pol.amount / 1e6).toFixed(1)}M</>}{fire && <> · Fire ${(fire.amount / 1e6).toFixed(1)}M</>}
             </div>
           </>

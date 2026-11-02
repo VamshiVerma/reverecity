@@ -69,8 +69,8 @@ const DataTable = ({
   return (
     <div className="glass-card rounded-lg overflow-hidden">
       <div className="p-4 border-b border-gray-800">
-        <h3 className="text-lg font-medium text-light-text">{title}</h3>
-        {description && <p className="text-sm text-gray-400 mt-1">{description}</p>}
+        <h3 className="text-lg font-medium text-foreground">{title}</h3>
+        {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
       </div>
       
       <div className="overflow-x-auto">

@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ConversationProvider } from "@/contexts/ConversationContext";
 import Assistant from "@/components/assistant/Assistant";
+import BreakingTakeover from "@/components/live/BreakingTakeover";
+import LiveToasts from "@/components/live/LiveToasts";
 import Index from "./pages/Index";
 import HousingPage from "./pages/HousingPage";
 import BudgetPage from "./pages/BudgetPage";
@@ -55,6 +57,8 @@ const App = () => (
 
               {/* Enhanced Real-time ChatBot - Available on all pages */}
               <Assistant />
+              <BreakingTakeover />
+              <LiveToasts />
 
             </BrowserRouter>
           </ConversationProvider>

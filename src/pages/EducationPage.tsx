@@ -204,17 +204,17 @@ export default function EducationPage() {
       <div className="space-y-6 p-6 animate-fade-in">
         {/* Education Overview Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Education in Revere</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Education in Revere</h1>
           <div className="flex flex-col md:flex-row items-start justify-between mb-6">
-            <p className="text-gray-300 max-w-2xl">
+            <p className="text-foreground/80 max-w-2xl">
               Revere Public Schools serves {districtData.totalStudents.toLocaleString()} students across {districtData.totalSchools} schools, 
               with a {districtData.studentTeacherRatio} student-teacher ratio. The district has a diverse student body with {districtData.minorityEnrollment} minority enrollment.
             </p>
             <div className="mt-4 md:mt-0 flex items-center gap-2 text-sm bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-700">
               <BookOpen className="h-4 w-4 text-highlight" />
-              <span className="font-medium text-white">{districtData.name}</span>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-300">{districtData.phone}</span>
+              <span className="font-medium text-foreground">{districtData.name}</span>
+              <span className="text-muted-foreground">|</span>
+              <span className="text-foreground/80">{districtData.phone}</span>
             </div>
           </div>
           
@@ -225,10 +225,10 @@ export default function EducationPage() {
         {/* Tabs for Different Views */}
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 mb-4 bg-gray-800/50 border border-gray-700">
-            <TabsTrigger value="overview" className="text-gray-300 data-[state=active]:text-highlight">
+            <TabsTrigger value="overview" className="text-foreground/80 data-[state=active]:text-highlight">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="directory" className="text-gray-300 data-[state=active]:text-highlight">
+            <TabsTrigger value="directory" className="text-foreground/80 data-[state=active]:text-highlight">
               Directory
             </TabsTrigger>
           </TabsList>
@@ -238,76 +238,76 @@ export default function EducationPage() {
             {/* District Overview */}
             <Card className="bg-card border-gray-800">
               <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-                <CardTitle className="text-xl font-bold text-white">District Overview</CardTitle>
+                <CardTitle className="text-xl font-bold text-foreground">District Overview</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 pb-3 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-2">Schools by Level</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Schools by Level</h3>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 text-center">
-                        <div className="text-lg font-bold text-white">{districtData.preschools}</div>
-                        <div className="text-xs text-gray-400">Preschools</div>
+                        <div className="text-lg font-bold text-foreground">{districtData.preschools}</div>
+                        <div className="text-xs text-muted-foreground">Preschools</div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 text-center">
-                        <div className="text-lg font-bold text-white">{districtData.elementarySchools}</div>
-                        <div className="text-xs text-gray-400">Elementary</div>
+                        <div className="text-lg font-bold text-foreground">{districtData.elementarySchools}</div>
+                        <div className="text-xs text-muted-foreground">Elementary</div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 text-center">
-                        <div className="text-lg font-bold text-white">{districtData.middleSchools}</div>
-                        <div className="text-xs text-gray-400">Middle</div>
+                        <div className="text-lg font-bold text-foreground">{districtData.middleSchools}</div>
+                        <div className="text-xs text-muted-foreground">Middle</div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700 text-center">
-                        <div className="text-lg font-bold text-white">{districtData.highSchools}</div>
-                        <div className="text-xs text-gray-400">High</div>
+                        <div className="text-lg font-bold text-foreground">{districtData.highSchools}</div>
+                        <div className="text-xs text-muted-foreground">High</div>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-2">Student Demographics</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Student Demographics</h3>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Hispanic/Latino</span>
-                        <span className="text-sm font-medium text-white">{districtData.demographics.hispanic}</span>
+                        <span className="text-sm text-foreground/80">Hispanic/Latino</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.demographics.hispanic}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">White</span>
-                        <span className="text-sm font-medium text-white">{districtData.demographics.white}</span>
+                        <span className="text-sm text-foreground/80">White</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.demographics.white}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Asian</span>
-                        <span className="text-sm font-medium text-white">{districtData.demographics.asian}</span>
+                        <span className="text-sm text-foreground/80">Asian</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.demographics.asian}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Black</span>
-                        <span className="text-sm font-medium text-white">{districtData.demographics.black}</span>
+                        <span className="text-sm text-foreground/80">Black</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.demographics.black}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Multiracial</span>
-                        <span className="text-sm font-medium text-white">{districtData.demographics.multiRace}</span>
+                        <span className="text-sm text-foreground/80">Multiracial</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.demographics.multiRace}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-2">Teachers & Staff</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Teachers & Staff</h3>
                     <div className="space-y-3">
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Certified Teachers</span>
+                          <span className="text-sm text-foreground/80">Certified Teachers</span>
                           <span className="text-sm font-medium text-highlight">{districtData.teachers.certified}</span>
                         </div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Full-time Counselors</span>
+                          <span className="text-sm text-foreground/80">Full-time Counselors</span>
                           <span className="text-sm font-medium text-highlight">{districtData.teachers.counselors}</span>
                         </div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Student-Teacher Ratio</span>
+                          <span className="text-sm text-foreground/80">Student-Teacher Ratio</span>
                           <span className="text-sm font-medium text-highlight">{districtData.studentTeacherRatio}</span>
                         </div>
                       </div>
@@ -321,7 +321,7 @@ export default function EducationPage() {
               <div className="lg:col-span-2">
                 <Card className="h-full overflow-hidden bg-card border-gray-800">
                   <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-                    <CardTitle className="text-xl font-bold text-white">School Types Distribution</CardTitle>
+                    <CardTitle className="text-xl font-bold text-foreground">School Types Distribution</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -329,22 +329,22 @@ export default function EducationPage() {
                         <div className="bg-indigo-900/30 p-3 rounded-full mb-3">
                           <Building2 className="h-8 w-8 text-indigo-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-white">{schools.filter(s => s.grades.includes('PK') || s.grades.includes('KG') || s.grades.includes('-5')).length}</h3>
-                        <p className="text-sm text-gray-400">Elementary Schools</p>
+                        <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('PK') || s.grades.includes('KG') || s.grades.includes('-5')).length}</h3>
+                        <p className="text-sm text-muted-foreground">Elementary Schools</p>
                       </div>
                       <div className="flex flex-col items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="bg-blue-900/30 p-3 rounded-full mb-3">
                           <Users className="h-8 w-8 text-blue-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-white">{schools.filter(s => s.grades.includes('6-8')).length}</h3>
-                        <p className="text-sm text-gray-400">Middle Schools</p>
+                        <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('6-8')).length}</h3>
+                        <p className="text-sm text-muted-foreground">Middle Schools</p>
                       </div>
                       <div className="flex flex-col items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="bg-purple-900/30 p-3 rounded-full mb-3">
                           <GraduationCap className="h-8 w-8 text-purple-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-white">{schools.filter(s => s.grades.includes('9-12')).length}</h3>
-                        <p className="text-sm text-gray-400">High Schools</p>
+                        <h3 className="text-xl font-bold text-foreground">{schools.filter(s => s.grades.includes('9-12')).length}</h3>
+                        <p className="text-sm text-muted-foreground">High Schools</p>
                       </div>
                     </div>
                     
@@ -355,7 +355,7 @@ export default function EducationPage() {
               <div className="lg:col-span-1">
                 <Card className="h-full overflow-hidden bg-card border-gray-800">
                   <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-                    <CardTitle className="text-xl font-bold text-white">Featured Schools</CardTitle>
+                    <CardTitle className="text-xl font-bold text-foreground">Featured Schools</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">
                     <ScrollArea className="h-[360px]">
@@ -379,9 +379,9 @@ export default function EducationPage() {
                           ))}
                         {schools.filter(s => s.mathProficiency !== null || s.readingProficiency !== null).length === 0 && (
                           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                            <div className="text-4xl text-gray-600 mb-4">📊</div>
-                            <h3 className="text-lg font-medium text-gray-300 mb-2">No Proficiency Data</h3>
-                            <p className="text-sm text-gray-400">
+                            <div className="text-4xl text-muted-foreground mb-4">📊</div>
+                            <h3 className="text-lg font-medium text-foreground/80 mb-2">No Proficiency Data</h3>
+                            <p className="text-sm text-muted-foreground">
                               None of the schools have reported proficiency metrics
                             </p>
                           </div>
@@ -396,45 +396,45 @@ export default function EducationPage() {
             {/* Test Scores Section */}
             <Card className="h-full overflow-hidden bg-card border-gray-800">
               <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-                <CardTitle className="text-xl font-bold text-white">District Test Scores</CardTitle>
-                <CardDescription className="text-gray-300">
+                <CardTitle className="text-xl font-bold text-foreground">District Test Scores</CardTitle>
+                <CardDescription className="text-foreground/80">
                   Proficiency in reading and mathematics by school level
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Reading Proficiency</h3>
+                    <h3 className="text-lg font-medium text-foreground">Reading Proficiency</h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.elementary.reading}</div>
-                        <div className="text-xs text-gray-400">Elementary</div>
+                        <div className="text-xs text-muted-foreground">Elementary</div>
                       </div>
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.middle.reading}</div>
-                        <div className="text-xs text-gray-400">Middle</div>
+                        <div className="text-xs text-muted-foreground">Middle</div>
                       </div>
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.high.reading}</div>
-                        <div className="text-xs text-gray-400">High</div>
+                        <div className="text-xs text-muted-foreground">High</div>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Math Proficiency</h3>
+                    <h3 className="text-lg font-medium text-foreground">Math Proficiency</h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.elementary.math}</div>
-                        <div className="text-xs text-gray-400">Elementary</div>
+                        <div className="text-xs text-muted-foreground">Elementary</div>
                       </div>
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.middle.math}</div>
-                        <div className="text-xs text-gray-400">Middle</div>
+                        <div className="text-xs text-muted-foreground">Middle</div>
                       </div>
                       <div className="flex flex-col p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                         <div className="text-3xl font-bold text-highlight mb-1">{districtData.testScores.high.math}</div>
-                        <div className="text-xs text-gray-400">High</div>
+                        <div className="text-xs text-muted-foreground">High</div>
                       </div>
                     </div>
                   </div>
@@ -443,8 +443,8 @@ export default function EducationPage() {
                 <div className="mt-6 pt-6 border-t border-gray-700">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium text-white">College Readiness Index</h3>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <h3 className="text-lg font-medium text-foreground">College Readiness Index</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
                         Based on student performance on AP® exams and tests
                       </p>
                     </div>
@@ -457,69 +457,69 @@ export default function EducationPage() {
             {/* Finances Card */}
             <Card className="h-full overflow-hidden bg-card border-gray-800">
               <CardHeader className="pb-2 bg-gradient-to-r from-purple-900/70 to-indigo-900/70">
-                <CardTitle className="text-xl font-bold text-white">District Finances</CardTitle>
+                <CardTitle className="text-xl font-bold text-foreground">District Finances</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Revenue</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Revenue</h3>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Total Revenue:</span>
-                      <span className="text-white font-medium">{districtData.finances.totalRevenue}</span>
+                      <span className="text-foreground/80">Total Revenue:</span>
+                      <span className="text-foreground font-medium">{districtData.finances.totalRevenue}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Per Student:</span>
-                      <span className="text-white font-medium">{districtData.finances.revenuePerStudent}</span>
+                      <span className="text-foreground/80">Per Student:</span>
+                      <span className="text-foreground font-medium">{districtData.finances.revenuePerStudent}</span>
                     </div>
                     
-                    <h4 className="text-md font-medium text-white mt-4">Revenue Sources</h4>
+                    <h4 className="text-md font-medium text-foreground mt-4">Revenue Sources</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">State</span>
-                        <span className="text-sm font-medium text-white">{districtData.finances.revenueSource.state}</span>
+                        <span className="text-sm text-foreground/80">State</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.finances.revenueSource.state}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Local</span>
-                        <span className="text-sm font-medium text-white">{districtData.finances.revenueSource.local}</span>
+                        <span className="text-sm text-foreground/80">Local</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.finances.revenueSource.local}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-300">Federal</span>
-                        <span className="text-sm font-medium text-white">{districtData.finances.revenueSource.federal}</span>
+                        <span className="text-sm text-foreground/80">Federal</span>
+                        <span className="text-sm font-medium text-foreground">{districtData.finances.revenueSource.federal}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Expenses</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Expenses</h3>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Total Expenses:</span>
-                      <span className="text-white font-medium">{districtData.finances.totalExpenses}</span>
+                      <span className="text-foreground/80">Total Expenses:</span>
+                      <span className="text-foreground font-medium">{districtData.finances.totalExpenses}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-300">Per Student:</span>
-                      <span className="text-white font-medium">{districtData.finances.expensesPerStudent}</span>
+                      <span className="text-foreground/80">Per Student:</span>
+                      <span className="text-foreground font-medium">{districtData.finances.expensesPerStudent}</span>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white mb-2">Spending Categories</h3>
+                    <h3 className="text-lg font-medium text-foreground mb-2">Spending Categories</h3>
                     <div className="space-y-3">
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Instruction</span>
-                          <span className="text-sm font-medium text-white">{districtData.finances.spending.instruction}</span>
+                          <span className="text-sm text-foreground/80">Instruction</span>
+                          <span className="text-sm font-medium text-foreground">{districtData.finances.spending.instruction}</span>
                         </div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Support Services</span>
-                          <span className="text-sm font-medium text-white">{districtData.finances.spending.supportServices}</span>
+                          <span className="text-sm text-foreground/80">Support Services</span>
+                          <span className="text-sm font-medium text-foreground">{districtData.finances.spending.supportServices}</span>
                         </div>
                       </div>
                       <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-300">Other Expenses</span>
-                          <span className="text-sm font-medium text-white">{districtData.finances.spending.other}</span>
+                          <span className="text-sm text-foreground/80">Other Expenses</span>
+                          <span className="text-sm font-medium text-foreground">{districtData.finances.spending.other}</span>
                         </div>
                       </div>
                     </div>
@@ -540,7 +540,7 @@ export default function EducationPage() {
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl bg-gray-800 border-gray-700">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-light-text">
+            <DialogTitle className="text-2xl font-bold text-foreground">
               {selectedSchool?.name}
             </DialogTitle>
           </DialogHeader>

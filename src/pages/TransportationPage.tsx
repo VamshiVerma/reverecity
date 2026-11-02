@@ -11,10 +11,10 @@ const TransportationPage = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-light-text flex items-center">
+        <h1 className="text-3xl font-bold text-foreground flex items-center">
           <Bus className="mr-3 text-highlight" /> Transportation
         </h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-muted-foreground mt-2">
           Explore transportation data for Revere, Massachusetts, including commute time, modes of transportation, and car ownership statistics.
         </p>
       </div>
@@ -48,7 +48,7 @@ const TransportationPage = () => {
           </TabsList>
           
           <TabsContent value="commute" className="mt-4">
-            <h2 className="text-xl font-semibold text-light-text mb-4">Commute Time</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Commute Time</h2>
             <div className="h-80">
               <BarChart
                 data={[
@@ -65,18 +65,18 @@ const TransportationPage = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Longer Than Average</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     Employees in Revere, MA have a longer commute time (35.1 minutes) than the normal US worker (26.6 minutes).
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Super Commuters</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     3.48% of the workforce in Revere, MA have "super commutes" in excess of 90 minutes.
                   </p>
                 </CardContent>
@@ -85,7 +85,7 @@ const TransportationPage = () => {
           </TabsContent>
           
           <TabsContent value="mode" className="mt-4">
-            <h2 className="text-xl font-semibold text-light-text mb-4">Mode of Transportation</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Mode of Transportation</h2>
             <div className="h-80">
               <PieChart
                 data={[
@@ -101,26 +101,26 @@ const TransportationPage = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Drove Alone</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     <span className="text-2xl font-bold">53.5%</span> of workers drove alone to work in 2023.
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Public Transit</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     <span className="text-2xl font-bold">23.9%</span> of workers used public transit to commute.
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Carpooled</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     <span className="text-2xl font-bold">10.4%</span> of workers carpooled to their workplace.
                   </p>
                 </CardContent>
@@ -129,7 +129,7 @@ const TransportationPage = () => {
           </TabsContent>
           
           <TabsContent value="cars" className="mt-4">
-            <h2 className="text-xl font-semibold text-light-text mb-4">Car Ownership</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Car Ownership</h2>
             <div className="h-80">
               <BarChart
                 data={[
@@ -144,18 +144,18 @@ const TransportationPage = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Average Ownership</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     The largest share of households in Revere, MA have 2 cars, which is consistent with national averages.
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-card/40 border border-white/10">
+              <Card className="bg-card/40 border border-border">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2">Comparison</h3>
-                  <p className="text-gray-300">
+                  <p className="text-foreground/80">
                     Revere's car ownership distribution closely mirrors national trends, with slight variations in multi-car households.
                   </p>
                 </CardContent>

@@ -65,15 +65,15 @@ export default {
 				},
 				success: 'hsl(var(--success))',
 				warning: 'hsl(var(--warning))',
-				highlight: "hsl(199 91% 58%)",
-				"highlight-secondary": "hsl(24 94% 62%)",
+				highlight: "hsl(var(--brand))",
+				"highlight-secondary": "hsl(var(--brand-2))",
 				"dark-bg": "hsl(222 33% 6.5%)",
 				"card-bg": "hsl(221 26% 10%)",
 				"light-text": "hsl(213 31% 95%)"
 			},
 			fontFamily: {
-				sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-				display: ['Sora', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				sans: ['Instrument Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				display: ['Instrument Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 				mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
 			},
 			boxShadow: {

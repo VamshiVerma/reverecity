@@ -64,13 +64,13 @@ export default function SchoolStats({ schools }: SchoolStatsProps) {
         <Card key={index} className="hover:shadow-lg transition-all duration-300 bg-card border-gray-800">
           <CardHeader className={`pb-2 bg-gradient-to-r ${stat.color}`}>
             <div className="flex justify-between items-center">
-              <CardTitle className="text-sm font-medium text-white">{stat.title}</CardTitle>
-              <stat.icon className="h-5 w-5 text-white opacity-80" />
+              <CardTitle className="text-sm font-medium text-foreground">{stat.title}</CardTitle>
+              <stat.icon className="h-5 w-5 text-foreground opacity-80" />
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-white">{stat.value}</div>
-            <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
+            <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+            <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
           </CardContent>
         </Card>
       ))}

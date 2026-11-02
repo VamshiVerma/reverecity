@@ -20,12 +20,12 @@ type Msg = {
 
 const STORE = "revere.assistant.v2";
 const SUGGESTIONS = [
-  { icon: ShieldCheck, tone: "text-rose-300 bg-rose-500/10 ring-rose-400/20", label: "Safety", q: "What's been happening around Revere Beach Boulevard lately?" },
-  { icon: Landmark, tone: "text-emerald-300 bg-emerald-500/10 ring-emerald-400/20", label: "Budget", q: "How much is Revere spending on the police department in FY2027?" },
-  { icon: TrainFront, tone: "text-sky-300 bg-sky-500/10 ring-sky-400/20", label: "Transit", q: "Is the Blue Line running normally right now?" },
-  { icon: CloudSun, tone: "text-amber-300 bg-amber-500/10 ring-amber-400/20", label: "Weather", q: "Do I need an umbrella this week?" },
-  { icon: Landmark, tone: "text-emerald-300 bg-emerald-500/10 ring-emerald-400/20", label: "Budget", q: "How did the school budget change from FY2026 to FY2027?" },
-  { icon: ShieldCheck, tone: "text-rose-300 bg-rose-500/10 ring-rose-400/20", label: "Safety", q: "What are the most common police calls in Revere this month?" },
+  { label: "Near me", q: "What's been happening around Revere Beach Boulevard lately?" },
+  { label: "The T", q: "Is the Blue Line running normally right now?" },
+  { label: "City money", q: "How much is Revere spending on the police department in FY2027?" },
+  { label: "Weather", q: "Do I need an umbrella this week?" },
+  { label: "Housing", q: "How much is rent in Revere compared to Chelsea?" },
+  { label: "Schools", q: "How did the school budget change from FY2026 to FY2027?" },
 ];
 const THINKING: Record<string, string> = {
   police: "Reading the latest police logs",
@@ -101,13 +101,16 @@ export default function Assistant() {
   const voice = useVoice({ onFinal: (t) => send(t, true) });
   const sendRef = useRef(send);
   sendRef.current = send;
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
 
   // Other parts of the app can open the assistant (optionally with a question).
   useEffect(() => {
     const onAsk = (e: Event) => {
       setOpen(true);
-      const q = (e as CustomEvent<{ q?: string }>).detail?.q;
-      if (q) setTimeout(() => sendRef.current?.(q), 350);
+      const d = (e as CustomEvent<{ q?: string; voice?: boolean }>).detail;
+      if (d?.q) setTimeout(() => sendRef.current?.(d.q!), 350);
+      else if (d?.voice) setTimeout(() => voiceRef.current?.startListening(), 400);
     };
     window.addEventListener("revere:ask", onAsk);
     return () => window.removeEventListener("revere:ask", onAsk);
@@ -142,13 +145,13 @@ export default function Assistant() {
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setOpen(true)}
-            className="group fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-full border border-white/15 bg-[hsl(222_35%_9%/0.85)] py-2 pl-2 pr-2 shadow-[0_18px_50px_-12px_hsl(199_91%_45%/0.55)] backdrop-blur-xl md:pr-4"
+            className="group fixed bottom-5 right-5 z-50 flex h-14 items-center gap-3 rounded-full bg-primary pl-2 pr-2 text-primary-foreground shadow-[0_12px_32px_rgba(0,0,0,0.6)] md:pr-5"
             aria-label="Ask Revere"
           >
-            <span className="orb h-10 w-10 shrink-0" />
+            <VoiceDot state="idle" className="h-10 w-10" />
             <span className="hidden flex-col items-start leading-tight md:flex">
-              <span className="font-display text-sm font-semibold text-foreground">Ask Revere</span>
-              <span className="text-[11px] text-muted-foreground">Type or talk · <kbd className="rounded bg-white/10 px-1 font-mono text-[10px]">/</kbd></span>
+              <span className="text-[15px] font-semibold">Ask Revere</span>
+              <span className="text-[12px] opacity-60">Type or just talk</span>
             </span>
           </motion.button>
         )}
@@ -159,7 +162,7 @@ export default function Assistant() {
         {open && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] md:bg-black/20"
+              className="fixed inset-0 z-50 bg-black/60"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
             />
@@ -170,18 +173,16 @@ export default function Assistant() {
               animate={{ x: 0, opacity: 1, scale: 1 }}
               exit={{ x: 40, opacity: 0, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 32 }}
-              className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-[hsl(222_35%_7%/0.97)] backdrop-blur-2xl md:inset-y-3 md:left-auto md:right-3 md:w-[460px] md:rounded-3xl md:border md:border-white/10 md:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
+              className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-background md:inset-y-3 md:left-auto md:right-3 md:w-[540px] md:rounded-[24px] md:shadow-[0_30px_80px_rgba(0,0,0,0.9)]"
             >
-              {/* ambient glow */}
-              <div className="pointer-events-none absolute -top-32 left-1/2 h-64 w-[140%] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,hsl(199_91%_56%/0.22),transparent)]" />
 
               {/* Header */}
-              <header className="relative flex items-center gap-3 border-b border-white/[0.07] px-4 py-3">
-                <span className={cn("orb h-9 w-9 shrink-0", orbState === "busy" && "orb-busy")} />
+              <header className="relative flex h-16 items-center gap-3 border-b border-border px-5">
+                <VoiceDot state={orbState} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-[15px] font-semibold leading-tight text-foreground">Ask Revere</h2>
-                  <p className="truncate text-[11.5px] text-muted-foreground">
-                    {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Speaking…" : orbState === "busy" ? "Looking it up…" : "Answers from live city data, with sources"}
+                  <h2 className="text-[16px] font-semibold leading-tight text-foreground">Ask Revere</h2>
+                  <p className="truncate text-[13px] text-muted-foreground">
+                    {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Speaking…" : orbState === "busy" ? "Looking it up…" : "Every answer links to where it came from"}
                   </p>
                 </div>
                 <IconBtn label={readAloud ? "Stop reading answers aloud" : "Read answers aloud"} active={readAloud} onClick={() => { setReadAloud((v) => !v); voice.stopSpeaking(); }}>
@@ -192,11 +193,11 @@ export default function Assistant() {
               </header>
 
               {/* Messages */}
-              <div ref={listRef} className="relative flex-1 overflow-y-auto px-4 py-5" aria-live="polite">
+              <div ref={listRef} className="relative flex-1 overflow-y-auto px-5 py-6" aria-live="polite">
                 {msgs.length === 0 ? (
                   <EmptyState onPick={(q) => send(q)} />
                 ) : (
-                  <div className="space-y-5">
+                  <div className="space-y-7">
                     {msgs.map((m) => (
                       <Message key={m.id} m={m} onSpeak={(t) => voice.speak(t)} speaking={voice.speaking} onStop={voice.stopSpeaking} />
                     ))}
@@ -206,9 +207,9 @@ export default function Assistant() {
               </div>
 
               {/* Composer */}
-              <div className="relative border-t border-white/[0.07] p-3">
+              <div className="relative border-t border-border p-4">
                 {voice.error && (
-                  <div className="mb-2 flex items-center justify-between rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-200 ring-1 ring-amber-400/20">
+                  <div className="mb-2 flex items-center justify-between rounded-2xl bg-secondary px-4 py-2.5 text-[13px] text-warning">
                     {voice.error}
                     <button className="ml-2 opacity-70 hover:opacity-100" onClick={() => voice.setError(null)} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button>
                   </div>
@@ -216,49 +217,49 @@ export default function Assistant() {
                 <AnimatePresence mode="wait">
                   {voice.listening ? (
                     <motion.div key="listen" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                      className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-highlight/15 via-white/[0.04] to-highlight-secondary/10 p-3 ring-1 ring-highlight/30">
+                      className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2">
                       <Wave level={voice.level} />
-                      <p className="min-w-0 flex-1 truncate text-sm text-foreground">{voice.interim || <span className="text-muted-foreground">Go ahead, I'm listening…</span>}</p>
-                      <button onClick={voice.stopListening} className="grid h-10 w-10 place-items-center rounded-full bg-highlight text-primary-foreground shadow-glow" aria-label="Stop listening">
+                      <p className="min-w-0 flex-1 truncate text-[16px] text-foreground">{voice.interim || <span className="text-muted-foreground">Listening. Ask your question…</span>}</p>
+                      <button onClick={voice.stopListening} className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Stop listening">
                         <Square className="h-4 w-4 fill-current" />
                       </button>
                     </motion.div>
                   ) : (
                     <motion.form key="type" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                       onSubmit={(e) => { e.preventDefault(); send(input); }}
-                      className="flex items-end gap-2 rounded-2xl bg-white/[0.04] p-2 ring-1 ring-white/10 transition focus-within:ring-highlight/50">
+                      className="flex items-end gap-1.5 rounded-[28px] bg-card p-2 pl-3 transition focus-within:bg-secondary">
                       <textarea
                         ref={inputRef}
                         rows={1}
                         value={input}
                         onChange={(e) => { setInput(e.target.value); e.currentTarget.style.height = "auto"; e.currentTarget.style.height = Math.min(140, e.currentTarget.scrollHeight) + "px"; }}
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                        placeholder="Ask about safety, the budget, the T, weather…"
-                        className="max-h-[140px] min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+                        placeholder="Ask anything about Revere"
+                        className="max-h-[140px] min-h-[44px] flex-1 resize-none bg-transparent px-2 py-[11px] text-[16px] text-foreground outline-none placeholder:text-muted-foreground"
                         aria-label="Your question"
                       />
                       <button type="button" onClick={voice.startListening} disabled={busy}
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:opacity-40"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground disabled:opacity-40"
                         aria-label="Ask by voice" title={voice.supported ? "Ask by voice" : "Voice input needs Chrome, Edge or Safari"}>
                         {voice.supported ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
                       </button>
                       <button type="submit" disabled={!input.trim() || busy}
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-highlight text-primary-foreground shadow-glow transition enabled:hover:brightness-110 disabled:bg-white/10 disabled:text-muted-foreground disabled:shadow-none"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition active:scale-95 disabled:bg-secondary disabled:text-muted-foreground"
                         aria-label="Send">
                         <ArrowUp className="h-5 w-5" />
                       </button>
                     </motion.form>
                   )}
                 </AnimatePresence>
-                <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-muted-foreground">
-                  <label className="flex cursor-pointer select-none items-center gap-2">
-                    <span className={cn("relative h-4 w-7 rounded-full transition", handsFree ? "bg-highlight" : "bg-white/15")}>
-                      <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all", handsFree ? "left-3.5" : "left-0.5")} />
+                <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[13px] text-muted-foreground">
+                  <label className="flex cursor-pointer select-none items-center gap-2.5 whitespace-nowrap">
+                    <span className={cn("relative h-5 w-9 rounded-full transition", handsFree ? "bg-highlight" : "bg-secondary")}>
+                      <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-primary transition-all", handsFree ? "left-[18px]" : "left-0.5")} />
                     </span>
                     <input type="checkbox" className="sr-only" checked={handsFree} onChange={(e) => { setHandsFree(e.target.checked); if (e.target.checked) { setReadAloud(true); voice.startListening(); } }} />
-                    Hands-free conversation
+                    Talk back and forth
                   </label>
-                  <span>Data, not guesses — every answer cites its source</span>
+                  <span className="truncate">Press / anywhere to ask</span>
                 </div>
               </div>
             </motion.section>
@@ -272,7 +273,7 @@ export default function Assistant() {
 function IconBtn({ children, label, onClick, active }: { children: React.ReactNode; label: string; onClick: () => void; active?: boolean }) {
   return (
     <button onClick={onClick} aria-label={label} title={label}
-      className={cn("grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition hover:bg-white/[0.07] hover:text-foreground [&_svg]:h-[18px] [&_svg]:w-[18px]", active && "bg-highlight/15 text-highlight")}>
+      className={cn("grid h-10 w-10 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground [&_svg]:h-[18px] [&_svg]:w-[18px]", active && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground")}>
       {children}
     </button>
   );
@@ -281,40 +282,46 @@ function IconBtn({ children, label, onClick, active }: { children: React.ReactNo
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
     <div className="flex h-full flex-col">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6 mt-4">
-        <p className="eyebrow mb-2">{greeting()}</p>
-        <h3 className="font-display text-[26px] font-semibold leading-tight tracking-tight text-foreground">
-          What do you want to know about <span className="text-gradient">Revere</span>?
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          I read the police logs, the city budget, live MBTA service and the forecast so you don't have to. Ask in your own words — or tap the mic and just talk.
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-7 mt-2">
+        <h3 className="text-[30px] font-semibold leading-[1.1] tracking-tight text-foreground">{greeting()}. What would you like to know?</h3>
+        <p className="mt-3 text-[16px] leading-relaxed text-muted-foreground">
+          Ask in your own words, or tap the microphone and talk. Answers come from the police log, the city budget, the MBTA, the forecast and housing data.
         </p>
       </motion.div>
-      <div className="grid gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {SUGGESTIONS.map((s, i) => (
           <motion.button
             key={s.q}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.05 }}
-            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onPick(s.q)}
-            className="group flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3 text-left transition hover:border-highlight/30 hover:bg-white/[0.05]"
+            className="rounded-[18px] bg-card p-4 text-left transition-colors hover:bg-secondary"
           >
-            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1", s.tone)}><s.icon className="h-[18px] w-[18px]" /></span>
-            <span className="min-w-0">
-              <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
-              <span className="block text-sm text-foreground/90 group-hover:text-foreground">{s.q}</span>
-            </span>
+            <span className="block text-[13px] text-muted-foreground">{s.label}</span>
+            <span className="mt-1 block text-[15px] leading-snug text-foreground">{s.q}</span>
           </motion.button>
         ))}
       </div>
-      <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
-        {["Revere PD public logs", "FY2026 & FY2027 budgets", "Live MBTA", "Open-Meteo + NWS"].map((t) => (
-          <span key={t} className="inline-flex items-center gap-1 rounded-full bg-white/[0.04] px-2 py-1 ring-1 ring-white/[0.07]"><Radio className="h-3 w-3 text-highlight" />{t}</span>
-        ))}
-      </div>
     </div>
+  );
+}
+
+/** Voice state as a solid disc with live bars: idle, thinking, listening or speaking. */
+function VoiceDot({ state, className }: { state: string; className?: string }) {
+  const moving = state !== "idle";
+  return (
+    <span className={cn("relative grid shrink-0 place-items-center rounded-full bg-highlight", className)} aria-hidden>
+      <span className="flex h-[42%] items-center gap-[2px]">
+        {[0.55, 1, 0.75, 0.4].map((h, i) => (
+          <motion.span key={i} className="w-[2.5px] rounded-full bg-black"
+            animate={moving ? { scaleY: [h, 1, 0.35, h] } : { scaleY: h }}
+            transition={moving ? { duration: state === "busy" ? 0.9 : 0.6, repeat: Infinity, delay: i * 0.12, ease: "easeInOut" } : { duration: 0.3 }}
+            style={{ height: "100%", originY: 0.5 }} />
+        ))}
+      </span>
+    </span>
   );
 }
 
@@ -323,17 +330,16 @@ function Message({ m, onSpeak, speaking, onStop }: { m: Msg; onSpeak: (t: string
   if (m.role === "user") {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-highlight/25 to-highlight/10 px-4 py-2.5 text-[15px] text-foreground ring-1 ring-highlight/25">
+        <div className="max-w-[85%] rounded-[20px] rounded-br-md bg-secondary px-4 py-3 text-[16px] leading-snug text-foreground">
           {m.content}
         </div>
       </motion.div>
     );
   }
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 28 }} className="flex gap-3">
-      <span className="orb mt-0.5 h-7 w-7 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <div className={cn("prose-revere text-[15px] leading-relaxed", m.error ? "text-amber-200" : "text-foreground/90")}>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 28 }}>
+      <div className="min-w-0">
+        <div className={cn("prose-revere text-[16px] leading-[1.6]", m.error ? "text-warning" : "text-foreground")}>
           <ReactMarkdown>{m.content}</ReactMarkdown>
         </div>
         {m.cards?.map((c, i) => <DataCard key={i} card={c} />)}
@@ -343,11 +349,11 @@ function Message({ m, onSpeak, speaking, onStop }: { m: Msg; onSpeak: (t: string
           </div>
         )}
         {!m.error && (
-          <div className="mt-2 flex gap-1 text-muted-foreground">
-            <button onClick={() => (speaking ? onStop() : onSpeak(m.content))} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] transition hover:bg-white/[0.06] hover:text-foreground">
+          <div className="mt-3 flex gap-1 text-muted-foreground">
+            <button onClick={() => (speaking ? onStop() : onSpeak(m.content))} className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] transition hover:bg-secondary hover:text-foreground">
               {speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3.5 w-3.5" />} {speaking ? "Stop" : "Listen"}
             </button>
-            <button onClick={() => { navigator.clipboard?.writeText(m.content); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] transition hover:bg-white/[0.06] hover:text-foreground">
+            <button onClick={() => { navigator.clipboard?.writeText(m.content); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] transition hover:bg-secondary hover:text-foreground">
               {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copied" : "Copy"}
             </button>
           </div>
@@ -368,12 +374,12 @@ function SourceChip({ s }: { s: AskSource }) {
       {s.url && <ExternalLink className="h-3 w-3 opacity-50" />}
     </>
   );
-  const cls = "inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-white/[0.04] px-2.5 py-1 text-[11.5px] ring-1 ring-white/10 transition hover:ring-highlight/40";
+  const cls = "inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-card px-2.5 py-1 text-[11.5px] ring-1 ring-border transition hover:ring-highlight/40";
   return s.url ? <a href={s.url} target={s.url.startsWith("/") ? undefined : "_blank"} rel="noreferrer" className={cls}>{body}</a> : <span className={cls}>{body}</span>;
 }
 
 function DataCard({ card }: { card: AskCard }) {
-  const shell = "mt-3 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]";
+  const shell = "mt-3 overflow-hidden rounded-2xl border border-border bg-card";
   if (card.type === "weather") {
     return (
       <div className={shell}>
@@ -384,12 +390,12 @@ function DataCard({ card }: { card: AskCard }) {
             <div className="text-xs text-muted-foreground">Feels {Math.round(card.current.feels)}° · wind {Math.round(card.current.wind)} mph</div>
           </div>
         </div>
-        <div className="grid grid-cols-4 border-t border-white/[0.06]">
+        <div className="grid grid-cols-4 border-t border-border">
           {card.days.map((d) => (
             <div key={d.date} className="p-2 text-center">
               <div className="text-[11px] text-muted-foreground">{new Date(d.date + "T12:00").toLocaleDateString("en-US", { weekday: "short" })}</div>
               <div className="text-sm font-medium tabular-nums text-foreground">{Math.round(d.hi)}°<span className="text-muted-foreground">/{Math.round(d.lo)}°</span></div>
-              <div className="text-[11px] text-sky-300 tabular-nums">{d.precipprob}%</div>
+              <div className="text-[11px] text-foreground tabular-nums">{d.precipprob}%</div>
             </div>
           ))}
         </div>
@@ -400,12 +406,12 @@ function DataCard({ card }: { card: AskCard }) {
     return (
       <div className={shell}>
         {card.alerts.map((a, i) => (
-          <div key={i} className="flex gap-2 border-b border-white/[0.06] bg-amber-500/[0.06] p-3 text-xs text-amber-100">
-            <span className="mt-0.5 shrink-0 rounded bg-amber-400/20 px-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">{a.effect.replace(/_/g, " ")}</span>
+          <div key={i} className="flex gap-2 border-b border-border bg-amber-500/[0.06] p-3 text-xs text-foreground">
+            <span className="mt-0.5 shrink-0 rounded bg-amber-400/20 px-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground">{a.effect.replace(/_/g, " ")}</span>
             <span className="line-clamp-2">{a.header}</span>
           </div>
         ))}
-        <div className="divide-y divide-white/[0.05]">
+        <div className="divide-y divide-border">
           {card.preds.length ? card.preds.map((p, i) => (
             <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
               <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-400" />{p.station}<span className="text-xs text-muted-foreground">→ {p.toward}</span></span>
@@ -419,7 +425,7 @@ function DataCard({ card }: { card: AskCard }) {
   if (card.type === "budget") {
     const rows = card.rows.filter((r) => r.fy === 2027).length ? card.rows.filter((r) => r.fy === 2027) : card.rows;
     return (
-      <div className={cn(shell, "divide-y divide-white/[0.06]")}>
+      <div className={cn(shell, "divide-y divide-border")}>
         {rows.slice(0, 3).map((r) => {
           const pct = r.prior ? ((Number(r.amount) - r.prior) / r.prior) * 100 : null;
           const payPct = r.amount && r.payroll ? (r.payroll / r.amount) * 100 : null;
@@ -428,7 +434,7 @@ function DataCard({ card }: { card: AskCard }) {
               <div className="flex items-baseline justify-between gap-3">
                 <span className="truncate text-xs text-muted-foreground">{r.name} · FY{r.fy}</span>
                 {pct != null && Math.abs(pct) >= 0.05 && (
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums", pct >= 0 ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300")}>
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums", pct >= 0 ? "bg-emerald-500/15 text-foreground" : "bg-rose-500/15 text-foreground")}>
                     {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
                   </span>
                 )}
@@ -436,7 +442,7 @@ function DataCard({ card }: { card: AskCard }) {
               <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-foreground">${Number(r.amount ?? 0).toLocaleString("en-US")}</div>
               {payPct != null && (
                 <div className="mt-2">
-                  <div className="flex h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="flex h-2 overflow-hidden rounded-full bg-card">
                     <motion.div className="h-full bg-highlight" initial={{ width: 0 }} animate={{ width: `${payPct}%` }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} />
                     <motion.div className="h-full bg-highlight-secondary" initial={{ width: 0 }} animate={{ width: `${100 - payPct}%` }} transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} />
                   </div>
@@ -465,8 +471,8 @@ function DataCard({ card }: { card: AskCard }) {
           {card.rows.filter((r) => r.value).map((r, i) => (
             <div key={r.place} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 text-xs">
               <span className={cn("truncate", r.place === "Revere" ? "font-semibold text-foreground" : "text-muted-foreground")}>{r.place}</span>
-              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                <motion.div className={cn("h-full rounded-full", r.place === "Revere" ? "bg-highlight" : "bg-white/25")} initial={{ width: 0 }}
+              <div className="h-2 overflow-hidden rounded-full bg-card">
+                <motion.div className={cn("h-full rounded-full", r.place === "Revere" ? "bg-highlight" : "bg-secondary")} initial={{ width: 0 }}
                   animate={{ width: `${((r.value ?? 0) / top) * 100}%` }} transition={{ duration: 0.6, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }} />
               </div>
               <span className="tabular-nums text-foreground">${Math.round((r.value ?? 0) / 1000)}K{r.rent ? <span className="text-muted-foreground"> · ${r.rent.toLocaleString("en-US")}/mo</span> : null}</span>
@@ -487,7 +493,7 @@ function DataCard({ card }: { card: AskCard }) {
         {card.byCat.map(([k, v], i) => (
           <div key={k} className="flex items-center gap-2 text-xs">
             <span className="w-28 shrink-0 truncate text-muted-foreground">{k.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-card">
               <motion.div className="h-full rounded-full bg-gradient-to-r from-rose-400 to-amber-300" initial={{ width: 0 }} animate={{ width: `${(v / max) * 100}%` }} transition={{ delay: 0.1 + i * 0.06, duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
             </div>
             <span className="w-8 text-right tabular-nums text-foreground">{v}</span>
