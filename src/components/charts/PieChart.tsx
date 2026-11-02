@@ -26,7 +26,7 @@ interface PieChartProps {
 
 const PieChart = ({ 
   title, 
-  colors = ["#9b87f5", "#03DAC6", "#CF6679", "#8BC34A", "#FFC107"], 
+  colors = ["#0297DE", "#5cc6ff", "#FC734D", "#8a9ba8", "#f4a58a"], 
   categories,
   height = 250,
   data: providedData
@@ -140,7 +140,7 @@ const PieChart = ({
               activeShape={renderActiveShape}
               onMouseEnter={onPieEnter}
               onMouseLeave={onPieLeave}
-              stroke="#1e1e1e"
+              stroke="#4b5a66"
               strokeWidth={1}
             >
               {dataWithTotal.map((entry, index) => (

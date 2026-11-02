@@ -204,7 +204,6 @@ export default function EducationPage() {
       <div className="space-y-6 p-6 animate-fade-in">
         {/* Education Overview Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Education in Revere</h1>
           <div className="flex flex-col md:flex-row items-start justify-between mb-6">
             <p className="text-foreground/80 max-w-2xl">
               Revere Public Schools serves {districtData.totalStudents.toLocaleString()} students across {districtData.totalSchools} schools, 

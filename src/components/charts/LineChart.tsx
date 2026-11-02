@@ -25,7 +25,7 @@ interface LineChartProps {
 
 const LineChart = ({ 
   title, 
-  color = "#BB86FC", 
+  color = "#b9e3fb", 
   timeframe = "Last 12 Months", 
   yAxisLabel,
   height = 200,

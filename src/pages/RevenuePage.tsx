@@ -58,16 +58,6 @@ export default function RevenuePage() {
   return (
     <DashboardLayout pageTitle="Revenue">
       <div className="mx-auto max-w-6xl space-y-8 pb-16">
-        <header className="space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-foreground">
-            <FileText className="h-3.5 w-3.5" /> FY2027 Adopted Budget · revenue section, pp. 228–242
-          </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground md:text-4xl">How Revere pays for it</h1>
-          <p className="max-w-2xl text-sm text-foreground/80 md:text-base">
-            Nearly all of the city's general fund comes from two places: local property taxes and state aid.
-            Here is how each source has moved over ten years, using the city's own figures. Striped bars are the city's projections, not actual collections.
-          </p>
-        </header>
 
         {/* Mix */}
         <section className="rounded-2xl border border-border bg-card p-5 md:p-6">
@@ -98,7 +88,7 @@ export default function RevenuePage() {
         {/* Property tax + local receipts headline */}
         <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-border bg-card p-5 md:p-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Property tax levy · FY2027 projected</div>
+            <div className="text-[11px] font-semibold text-muted-foreground">Property tax levy · FY2027 projected</div>
             <div className="mt-2 font-display text-4xl font-semibold tabular-nums text-foreground">{money(p27.v)}</div>
             <p className="mt-1 text-sm text-foreground/80">
               <span className="font-semibold text-foreground">+{(((p27.v - p26.v) / p26.v) * 100).toFixed(1)}%</span> over FY2026 ·{" "}
@@ -109,7 +99,7 @@ export default function RevenuePage() {
             <Foot page={property.page} q="How much does Revere collect in property taxes and why is it going up?" />
           </div>
           <div className="rounded-2xl border border-border bg-card p-5 md:p-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Local receipts · FY2027 projected</div>
+            <div className="text-[11px] font-semibold text-muted-foreground">Local receipts · FY2027 projected</div>
             <div className="mt-2 font-display text-4xl font-semibold tabular-nums text-foreground">{money(last(localTotal).v)}</div>
             <p className="mt-1 text-sm text-foreground/80">Car excise, hotel and meals taxes, permits, fines, investment income and fees, added up.</p>
             <p className="mt-1 text-xs text-muted-foreground">Every year leaves out “other department revenue” (about $1.4M), because the budget doesn't project it for FY2027.</p>
@@ -156,7 +146,7 @@ export default function RevenuePage() {
             { t: "Stabilization fund balance", d: "The city's rainy-day savings. At least 15% of certified free cash is added each year by ordinance.", s: STABILIZATION, q: "How big is Revere's stabilization (rainy day) fund?" },
           ].map((r) => (
             <div key={r.t} className="rounded-2xl border border-border bg-card p-5 md:p-6">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{r.t}</div>
+              <div className="text-[11px] font-semibold text-muted-foreground">{r.t}</div>
               <div className="mt-2 font-display text-3xl font-semibold tabular-nums text-foreground">{money(last(r.s.series).v, 2)}</div>
               <p className="mt-1 text-xs text-muted-foreground">{r.d}</p>
               <div className="mt-5"><Bars series={r.s.series} height={140} /></div>

@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Mic, Moon, Search, Sun, X } from "lucide-react";
+import { Mic, Moon, Search, Sun, X, Home, ShieldAlert, TrainFront, CloudSun, Landmark, Coins, House, Users, Briefcase, GraduationCap, HeartPulse, Bus, Shield, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 interface SidebarProps {
@@ -10,33 +10,33 @@ interface SidebarProps {
   toggleSidebar: () => void;
 }
 
-const GROUPS: { label: string; links: { to: string; label: string; live?: boolean }[] }[] = [
+const GROUPS: { label: string; links: { to: string; label: string; icon: LucideIcon; live?: boolean }[] }[] = [
   {
-    label: "Right now",
+    label: "Live now",
     links: [
-      { to: "/", label: "Overview" },
-      { to: "/police-logs", label: "Police log", live: true },
-      { to: "/mbta", label: "Blue Line & buses", live: true },
-      { to: "/weather", label: "Weather", live: true },
+      { to: "/", label: "Today in Revere", icon: Home },
+      { to: "/police-logs", label: "Police log", icon: ShieldAlert, live: true },
+      { to: "/mbta", label: "Blue Line & buses", icon: TrainFront, live: true },
+      { to: "/weather", label: "Weather", icon: CloudSun, live: true },
     ],
   },
   {
     label: "City money",
     links: [
-      { to: "/budget", label: "Budget" },
-      { to: "/revenue", label: "Revenue" },
+      { to: "/budget", label: "Budget", icon: Landmark },
+      { to: "/revenue", label: "Taxes & revenue", icon: Coins },
     ],
   },
   {
-    label: "Living here",
+    label: "Neighborhood",
     links: [
-      { to: "/housing", label: "Housing" },
-      { to: "/demographics", label: "People" },
-      { to: "/economic", label: "Jobs & economy" },
-      { to: "/education", label: "Schools" },
-      { to: "/health", label: "Health" },
-      { to: "/transportation", label: "Getting around" },
-      { to: "/crime", label: "Public safety" },
+      { to: "/housing", label: "Housing costs", icon: House },
+      { to: "/demographics", label: "Who lives here", icon: Users },
+      { to: "/economic", label: "Jobs & income", icon: Briefcase },
+      { to: "/education", label: "Schools", icon: GraduationCap },
+      { to: "/health", label: "Health", icon: HeartPulse },
+      { to: "/transportation", label: "Commuting", icon: Bus },
+      { to: "/crime", label: "Safety overview", icon: Shield },
     ],
   },
 ];
@@ -103,7 +103,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {GROUPS.map((g) => (
             <div key={g.label} className="mb-6 last:mb-0">
-              <p className="px-3 pb-1.5 text-[13px] text-muted-foreground">{g.label}</p>
+              <p className="px-3 pb-1.5 text-[12.5px] font-medium text-muted-foreground/80">{g.label}</p>
               {g.links.map((l) => (
                 <NavLink
                   key={l.to}
@@ -112,20 +112,29 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                   onClick={close}
                   className={({ isActive }) =>
                     cn(
-                      "flex h-[34px] items-center justify-between rounded-[10px] px-3 text-[14.5px] transition-colors",
+                      "group flex h-[38px] items-center gap-3 rounded-[12px] px-3 text-[14.5px] transition-colors",
                       isActive ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:bg-card hover:text-foreground",
                     )
                   }
                 >
-                  {l.label}
-                  {l.live && <span className="h-1.5 w-1.5 rounded-full bg-highlight" aria-label="updates live" />}
+                  {({ isActive }) => (
+                    <>
+                      <l.icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-highlight-secondary" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={1.75} />
+                      <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                      {l.live && (
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-highlight-secondary">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-highlight-secondary motion-reduce:animate-none" />Live
+                        </span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
 
-        <NavLink to="/" onClick={close} className="group relative mx-3 mb-2 block h-[132px] shrink-0 overflow-hidden rounded-[18px]">
+        <NavLink to="/" onClick={close} className="group relative mx-3 mb-2 hidden h-[132px] shrink-0 overflow-hidden rounded-[18px] [@media(min-height:1000px)]:block">
           <img src="/images/revere-beach-carnival-postcard.jpg" alt="Postcard of Carnival Week crowds on Revere Beach, early 1900s" loading="lazy"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_25%,rgba(2,7,10,0.92))]" />
@@ -136,7 +145,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
         </NavLink>
 
         <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <p className="text-[12px] leading-snug text-muted-foreground">Independent, from public data</p>
+          <span className="text-[13px] text-muted-foreground">{resolvedTheme === "dark" ? "Dark mode" : "Light mode"}</span>
           <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}

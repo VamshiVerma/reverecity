@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { animate, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Mic } from "lucide-react";
+import { Mic, Search } from "lucide-react";
 import LiveLine from "@/components/home/LiveLine";
+import WeatherIcon from "@/components/WeatherIcon";
 import { PoliceWeek, WeatherField, MoneyBar, HomesCard, AskPostcard } from "@/components/home/Sections";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,8 +82,7 @@ export default function Index() {
   const rise = (i: number) => (reduce ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.05 + i * 0.07, duration: 0.5, ease: [0.22, 1, 0.36, 1] } });
 
   return (
-    <DashboardLayout pageTitle="Overview">
-      <Hero s={s} today={today} homes={housing[0]} rb={rb} wow={wow} />
+    <DashboardLayout pageTitle="Overview" hero={<Hero s={s} today={today} homes={housing[0]} rb={rb} wow={wow} />}>
       <div className="w-full">
         {err && !s && <p className="mt-6 rounded-[22px] bg-card p-5 text-[15px] text-muted-foreground">The live feeds aren't answering right now. The pages still work; numbers will appear when the connection returns.</p>}
 
@@ -132,12 +132,12 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
   const reduce = useReducedMotion();
   const words = `${greeting()},`.split(" ");
   return (
-    <section className="relative isolate overflow-hidden rounded-[28px] text-white" aria-label="Revere right now">
+    <section className="relative isolate overflow-hidden text-white" aria-label="Revere right now">
       <div className="sunrise" aria-hidden>
         <div className="glow-blue" /><div className="glow-sun" /><div className="streaks" /><div className="horizon" /><div className="grain" />
       </div>
 
-      <div className="relative flex min-h-[640px] flex-col px-5 pb-6 pt-6 md:min-h-[700px] md:px-10 md:pt-8">
+      <div className="relative mx-auto flex min-h-[calc(100svh-40px)] max-w-[1280px] flex-col px-4 pb-8 pt-6 md:min-h-[760px] md:px-7 md:pt-8">
         <div className="flex items-center justify-between text-[13px] text-white/70">
           <span className="flex items-center gap-2">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-secondary opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-highlight-secondary" /></span>
@@ -157,19 +157,25 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
           </h1>
           <motion.p initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, duration: 0.7 }}
             className="mt-5 max-w-[560px] text-[17px] leading-relaxed text-white/80 md:text-[19px]">
-            {today ?? "Reading the city's live feeds…"} Ask anything about the city, out loud or by typing.
+            {today ?? "Reading the city's live feeds…"}
           </motion.p>
 
-          <motion.button onClick={() => ask({ voice: true })} initial={reduce ? false : { opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.85, type: "spring", stiffness: 220, damping: 18 }}
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
-            className="voice-orb relative mt-9 grid h-[104px] w-[104px] place-items-center rounded-full bg-white/10 ring-1 ring-white/30 backdrop-blur-md" aria-label="Talk to Revere">
-            <span className="flex flex-col items-center gap-1 text-[12px] font-medium text-white/90"><Mic className="h-6 w-6" />Talk</span>
-          </motion.button>
+          <motion.div initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.85, duration: 0.7 }}
+            className="mt-9 flex w-full max-w-[620px] items-center gap-2 rounded-full bg-white/10 p-2 pl-5 ring-1 ring-white/20 backdrop-blur-md transition focus-within:bg-white/15 focus-within:ring-white/40">
+            <Search className="h-5 w-5 shrink-0 text-white/70" />
+            <form className="flex-1" onSubmit={(e) => { e.preventDefault(); const q = new FormData(e.currentTarget).get("q") as string; if (q?.trim()) { ask({ q }); e.currentTarget.reset(); } }}>
+              <input name="q" placeholder="Ask anything about Revere…" aria-label="Ask a question about Revere"
+                className="h-11 w-full bg-transparent text-[17px] text-white outline-none placeholder:text-white/55" />
+            </form>
+            <button onClick={() => ask({ voice: true })} aria-label="Ask by voice" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-highlight-secondary text-[#2a0d04] transition-transform hover:scale-105 active:scale-95">
+              <Mic className="h-5 w-5" />
+            </button>
+          </motion.div>
 
           {/* Live numbers flank the greeting on wide screens, sit below it on phones */}
-          <div className="mt-10 grid w-full grid-cols-2 gap-x-6 gap-y-7 text-left lg:absolute lg:inset-x-0 lg:top-[34%] lg:mt-0 lg:flex lg:justify-between">
+          <div className="mt-10 grid w-full grid-cols-2 gap-x-6 gap-y-7 text-left lg:absolute lg:inset-x-0 lg:top-[30%] lg:mt-0 lg:flex lg:justify-between">
             <div className="space-y-8 contents lg:block">
-              <HeroStat delay={1.0} label="Right now" sub={s?.weather ? `${s.weather.conditions} · feels ${Math.round(s.weather.feels)}°` : ""} value={s?.weather ? <><CountUp to={Math.round(s.weather.temp)} />°</> : "—"} />
+              <HeroStat delay={1.0} label="Right now" sub={s?.weather ? `${s.weather.conditions} · feels ${Math.round(s.weather.feels)}°` : ""} value={s?.weather ? <span className="inline-flex items-center gap-3"><CountUp to={Math.round(s.weather.temp)} />°<WeatherIcon conditions={s.weather.conditions} className="h-8 w-8 text-[#ffd79a]" /></span> : "—"} />
               <HeroStat delay={1.1} label="Next train, Revere Beach" sub="Toward Boston" value={s ? mins(rb?.toBowdoin ?? null) : "—"} />
             </div>
             <div className="space-y-8 contents lg:block">

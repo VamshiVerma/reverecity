@@ -41,7 +41,7 @@ import PoliceLogsAnalytics from '@/components/PoliceLogsAnalytics';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#14b8a6', '#f97316'];
+const COLORS = ['#2f7fb3', '#0297DE', '#d9572f', '#ffc2ad', '#c8d3da', '#5cc6ff', '#2f7fb3', '#ffc2ad'];
 
 const PoliceLogsPage = () => {
   const { toast } = useToast();
@@ -305,15 +305,6 @@ const PoliceLogsPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Shield className="h-8 w-8 text-primary" />
-              Police Logs
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              From the Revere Police Department's public dispatch log
-              {latestLogDate && <> · covers through <span className="text-foreground font-medium">{new Date(latestLogDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span></>}
-              {' '}· updates automatically when RPD posts a new log
-            </p>
           </div>
           <Button onClick={handleManualSync} disabled={syncing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
@@ -392,7 +383,7 @@ const PoliceLogsPage = () => {
                       `${formatCallType(callTypeCategory)} (${percentage.toFixed(1)}%)`
                     }
                     outerRadius={80}
-                    fill="#8884d8"
+                    fill="#b9e3fb"
                     dataKey="count"
                   >
                     {callTypeBreakdown.slice(0, 8).map((entry, index) => (
@@ -427,7 +418,7 @@ const PoliceLogsPage = () => {
                   <Line
                     type="monotone"
                     dataKey="total_calls"
-                    stroke="#3b82f6"
+                    stroke="#2f7fb3"
                     strokeWidth={2}
                     name="Total Calls"
                   />

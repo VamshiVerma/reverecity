@@ -36,23 +36,19 @@ const CrimePage = () => {
 
   // Crime grade colors
   const crimeGradeColors = {
-    "A": "#4CAF50",
-    "B+": "#8BC34A",
-    "B": "#CDDC39",
-    "C+": "#FFEB3B",
-    "C": "#FFC107",
-    "D": "#FF9800",
-    "F": "#F44336"
+    "A": "#8a9ba8",
+    "B+": "#8a9ba8",
+    "B": "#4b5a66",
+    "C+": "#c8d3da",
+    "C": "#f4a58a",
+    "D": "#FC734D",
+    "F": "#f4a58a"
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col">
-          <h1 className="text-3xl font-bold tracking-tight">Crime Dashboard: Revere, MA</h1>
-          <p className="text-muted-foreground mt-2">
-            Comprehensive analysis of crime statistics and safety metrics in Revere
-          </p>
         </div>
 
         {/* Crime Grade Overview */}
@@ -116,7 +112,7 @@ const CrimePage = () => {
             <CardContent>
               <PieChart 
                 data={violentCrimeData}
-                colors={["#F44336", "#FF9800", "#FFEB3B", "#616161"]} 
+                colors={["#f4a58a", "#FC734D", "#c8d3da", "#8a9ba8"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
@@ -132,7 +128,7 @@ const CrimePage = () => {
             <CardContent>
               <PieChart 
                 data={propertyCrimeData}
-                colors={["#2196F3", "#03A9F4", "#00BCD4", "#607D8B"]} 
+                colors={["#0297DE", "#0297DE", "#5cc6ff", "#2f7fb3"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
@@ -148,7 +144,7 @@ const CrimePage = () => {
             <CardContent>
               <PieChart 
                 data={otherCrimeData}
-                colors={["#9C27B0", "#673AB7", "#3F51B5", "#009688", "#795548"]} 
+                colors={["#5cc6ff", "#b9e3fb", "#b9e3fb", "#2f7fb3", "#ffc2ad"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">

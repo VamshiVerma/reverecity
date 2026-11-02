@@ -53,11 +53,11 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
 
   function getGradeColor(grade: string): string {
     if (grade === "PK" || grade === "K" || parseInt(grade) <= 5) {
-      return "#9b87f5"; // Elementary - purple
+      return "#0297DE"; // Elementary - purple
     } else if (parseInt(grade) <= 8) {
-      return "#1EAEDB"; // Middle - blue
+      return "#0297DE"; // Middle - blue
     } else {
-      return "#BB86FC"; // High - bright purple
+      return "#b9e3fb"; // High - bright purple
     }
   }
 
@@ -91,12 +91,12 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
                 <Tooltip 
                   cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
                   contentStyle={{ 
-                    backgroundColor: '#1f2937', 
-                    border: '1px solid #374151',
+                    backgroundColor: '#4b5a66', 
+                    border: '1px solid #c8d3da',
                     borderRadius: '0.375rem'
                   }}
-                  labelStyle={{ color: '#f3f4f6' }}
-                  itemStyle={{ color: '#f3f4f6' }}
+                  labelStyle={{ color: '#8a9ba8' }}
+                  itemStyle={{ color: '#8a9ba8' }}
                   formatter={(value) => [`${value} schools`, 'Schools']}
                   labelFormatter={(grade) => `Grade ${grade}`}
                 />
@@ -111,15 +111,15 @@ export default function GradeDistribution({ schools }: GradeDistributionProps) {
         </ScrollArea>
         <div className="flex justify-center gap-6 mt-4">
           <div className="flex items-center">
-            <div className="h-3 w-3 rounded-full bg-[#9b87f5] mr-2"></div>
+            <div className="h-3 w-3 rounded-full bg-[#0297DE] mr-2"></div>
             <span className="text-xs text-foreground/80">Elementary (PK-5)</span>
           </div>
           <div className="flex items-center">
-            <div className="h-3 w-3 rounded-full bg-[#1EAEDB] mr-2"></div>
+            <div className="h-3 w-3 rounded-full bg-[#0297DE] mr-2"></div>
             <span className="text-xs text-foreground/80">Middle (6-8)</span>
           </div>
           <div className="flex items-center">
-            <div className="h-3 w-3 rounded-full bg-[#BB86FC] mr-2"></div>
+            <div className="h-3 w-3 rounded-full bg-[#b9e3fb] mr-2"></div>
             <span className="text-xs text-foreground/80">High (9-12)</span>
           </div>
         </div>

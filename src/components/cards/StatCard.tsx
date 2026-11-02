@@ -14,54 +14,21 @@ interface StatCardProps {
   footnote?: string;
 }
 
-const StatCard = ({ title, value, icon, change, className, footnote }: StatCardProps) => {
+const StatCard = ({ title, value, change, className, footnote }: StatCardProps) => {
   return (
-    <div
-      className={cn(
-        "group glass-card hover-lift relative flex h-full flex-col overflow-hidden p-5",
-        className
-      )}
-    >
-      {/* top brand hairline */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-highlight/50 to-transparent opacity-70" />
-
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <h3 className="eyebrow leading-tight">{title}</h3>
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-highlight/10 text-highlight ring-1 ring-highlight/20 transition-colors group-hover:bg-highlight/15">
-          {icon}
-        </div>
-      </div>
-
-      <div className="text-3xl font-display font-semibold tracking-tight text-foreground tnum">
-        {value}
-      </div>
-
+    <div className={cn("flex h-full flex-col rounded-[28px] bg-card p-5 md:p-6", className)}>
+      <h3 className="text-[14px] text-muted-foreground">{title}</h3>
+      <div className="tnum mt-2 font-serif-display text-[44px] leading-none text-foreground">{value}</div>
       {change && (
-        <div className="mt-2 flex items-center gap-1.5 text-sm">
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold tnum",
-              change.isPositive
-                ? "bg-success/10 text-success"
-                : "bg-destructive/10 text-destructive"
-            )}
-          >
-            {change.isPositive ? (
-              <ArrowUpRight className="h-3 w-3" />
-            ) : (
-              <ArrowDownRight className="h-3 w-3" />
-            )}
+        <div className="mt-3 flex items-center gap-1.5 text-[13px]">
+          <span className={cn("inline-flex items-center gap-0.5 font-semibold tnum", change.isPositive ? "text-highlight" : "text-highlight-secondary")}>
+            {change.isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
             {Math.abs(change.value)}%
           </span>
-          <span className="text-muted-foreground">vs last period</span>
+          <span className="text-muted-foreground">vs the previous estimate</span>
         </div>
       )}
-
-      {footnote && (
-        <div className="mt-auto pt-3 text-xs leading-relaxed text-muted-foreground">
-          {footnote}
-        </div>
-      )}
+      {footnote && <div className="mt-auto pt-3 text-[13px] leading-relaxed text-muted-foreground">{footnote}</div>}
     </div>
   );
 };

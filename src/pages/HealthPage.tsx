@@ -53,10 +53,6 @@ const HealthPage = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col">
-          <h1 className="text-3xl font-bold tracking-tight">Health Dashboard: Revere, MA</h1>
-          <p className="text-muted-foreground mt-2">
-            Comprehensive analysis of health statistics and healthcare metrics in Revere
-          </p>
         </div>
 
         {/* Health Insurance Coverage Overview */}
@@ -120,7 +116,7 @@ const HealthPage = () => {
             <div className="h-80">
               <PieChart
                 data={healthCareGenderData}
-                colors={["#3F51B5", "#E91E63"]}
+                colors={["#b9e3fb", "#d9572f"]}
                 height={300}
               />
             </div>
@@ -138,7 +134,7 @@ const HealthPage = () => {
             <div className="h-80">
               <BarChart
                 data={healthCoverageData}
-                color="#F44336"
+                color="#f4a58a"
                 yAxisLabel="% of population"
                 height={300}
               />
@@ -158,7 +154,7 @@ const HealthPage = () => {
             <CardContent>
               <PieChart 
                 data={healthCoverageData}
-                colors={["#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107", "#F44336"]} 
+                colors={["#8a9ba8", "#8a9ba8", "#4b5a66", "#c8d3da", "#f4a58a", "#f4a58a"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
@@ -174,7 +170,7 @@ const HealthPage = () => {
             <CardContent>
               <BarChart 
                 data={providerPatientData}
-                color="#9C27B0"
+                color="#5cc6ff"
                 yAxisLabel="Patients"
                 height={300}
               />
@@ -194,7 +190,7 @@ const HealthPage = () => {
             <CardContent>
               <PieChart 
                 data={healthCareAgeData}
-                colors={["#2196F3", "#03A9F4", "#00BCD4", "#607D8B"]} 
+                colors={["#0297DE", "#0297DE", "#5cc6ff", "#2f7fb3"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
@@ -210,7 +206,7 @@ const HealthPage = () => {
             <CardContent>
               <PieChart 
                 data={healthCareGenderData}
-                colors={["#3F51B5", "#E91E63"]} 
+                colors={["#b9e3fb", "#d9572f"]} 
                 height={300}
               />
               <div className="text-center mt-2 text-sm font-medium text-muted-foreground">
@@ -229,7 +225,7 @@ const HealthPage = () => {
             <div className="h-80">
               <LineChart 
                 data={healthcareTrendData}
-                color="#FF5722"
+                color="#FC734D"
                 yAxisLabel="Patients per Physician"
                 height={300}
               />

@@ -25,7 +25,7 @@ interface BarChartProps {
 
 const BarChart = ({ 
   title, 
-  color = "#03DAC6", 
+  color = "#5cc6ff", 
   categories,
   yAxisLabel,
   height = 200,

@@ -86,16 +86,9 @@ export default function BudgetPage() {
       <div className="mx-auto max-w-6xl space-y-8 pb-16">
         {/* Header */}
         <header className="space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-foreground">
-            <FileText className="h-3.5 w-3.5" /> From the adopted budget · every number links to its page
-          </div>
+
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Where Revere's money goes</h1>
-              <p className="mt-2 max-w-2xl text-sm text-foreground/80 md:text-base">
-                Search any department, see how much it gets this year, how that compares to last year, and open the exact page in the city's budget document.
-              </p>
-            </div>
+            <p className="text-[15px] text-muted-foreground">Every number links to its page in the adopted budget.</p>
             {years.length > 1 && (
               <div className="flex rounded-xl border border-border bg-card p-1" role="tablist" aria-label="Fiscal year">
                 {years.map((y) => (
@@ -162,7 +155,7 @@ export default function BudgetPage() {
         {/* Department list */}
         {rows && (
           <section className="overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="hidden grid-cols-[1fr_120px_110px_88px] gap-4 border-b border-border px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid">
+            <div className="hidden grid-cols-[1fr_120px_110px_88px] gap-4 border-b border-border px-5 py-2.5 text-[11px] font-semibold text-muted-foreground md:grid">
               <span>Department</span><span className="text-right">FY{year}</span><span className="text-right">vs FY{year - 1}</span><span className="text-right">Source</span>
             </div>
             <motion.ul layout className="divide-y divide-border">
@@ -257,7 +250,7 @@ function Stat({ i, label, value, sub, href, page, note }: { i: number; label: st
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, type: "spring", stiffness: 260, damping: 26 }}
       className="flex flex-col rounded-2xl border border-border bg-card p-4">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
       <span className="mt-2 font-display text-3xl font-semibold tabular-nums text-foreground">{value}</span>
       <span className="mt-1 text-xs">{sub}</span>
       <span className="mt-auto pt-2 text-[11px] text-muted-foreground">
@@ -283,7 +276,7 @@ function Delta({ a, b, suffix }: { a: number; b: number; suffix?: string }) {
 function Fact({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{k}</dt>
+      <dt className="text-[11px] text-muted-foreground">{k}</dt>
       <dd className="mt-0.5 font-medium tabular-nums text-foreground">{v}</dd>
     </div>
   );

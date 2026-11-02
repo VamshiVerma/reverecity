@@ -23,7 +23,7 @@ interface Props {
 }
 
 const PoliceLogsAnalytics = ({ data }: Props) => {
-  const HOUR_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+  const HOUR_COLORS = ['#2f7fb3', '#0297DE', '#d9572f', '#ffc2ad', '#c8d3da'];
 
   const formatPercent = (value: number) => {
     const sign = value > 0 ? '+' : '';
@@ -128,10 +128,10 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                   <Cell
                     key={`cell-${index}`}
                     fill={
-                      entry.count > 20 ? '#ef4444' :
-                      entry.count > 15 ? '#f59e0b' :
-                      entry.count > 10 ? '#10b981' :
-                      '#3b82f6'
+                      entry.count > 20 ? '#d9572f' :
+                      entry.count > 15 ? '#ffc2ad' :
+                      entry.count > 10 ? '#c8d3da' :
+                      '#2f7fb3'
                     }
                   />
                 ))}
@@ -140,19 +140,19 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
           </ResponsiveContainer>
           <div className="flex items-center justify-center gap-4 mt-4 text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-[#3b82f6] rounded"></div>
+              <div className="w-3 h-3 bg-[#2f7fb3] rounded"></div>
               <span>Low (≤10)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-[#10b981] rounded"></div>
+              <div className="w-3 h-3 bg-[#c8d3da] rounded"></div>
               <span>Medium (11-15)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-[#f59e0b] rounded"></div>
+              <div className="w-3 h-3 bg-[#ffc2ad] rounded"></div>
               <span>High (16-20)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-[#ef4444] rounded"></div>
+              <div className="w-3 h-3 bg-[#d9572f] rounded"></div>
               <span>Very High (&gt;20)</span>
             </div>
           </div>
@@ -187,7 +187,7 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                 <Line
                   type="monotone"
                   dataKey="calls"
-                  stroke="#3b82f6"
+                  stroke="#2f7fb3"
                   strokeWidth={2}
                   name="Total Calls"
                   dot={{ r: 4 }}
@@ -195,7 +195,7 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                 <Line
                   type="monotone"
                   dataKey="reports"
-                  stroke="#ef4444"
+                  stroke="#d9572f"
                   strokeWidth={2}
                   name="Reports Filed"
                   dot={{ r: 4 }}
@@ -203,7 +203,7 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                 <Line
                   type="monotone"
                   dataKey="incidents"
-                  stroke="#f59e0b"
+                  stroke="#ffc2ad"
                   strokeWidth={2}
                   name="Major Incidents"
                   dot={{ r: 4 }}
@@ -233,16 +233,16 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                 <Area
                   type="monotone"
                   dataKey="calls"
-                  stroke="#8b5cf6"
-                  fill="#8b5cf6"
+                  stroke="#0297DE"
+                  fill="#0297DE"
                   fillOpacity={0.3}
                   name="Total Calls"
                 />
                 <Area
                   type="monotone"
                   dataKey="avgPerDay"
-                  stroke="#10b981"
-                  fill="#10b981"
+                  stroke="#c8d3da"
+                  fill="#c8d3da"
                   fillOpacity={0.3}
                   name="Avg Per Day"
                 />
@@ -295,7 +295,7 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                   return null;
                 }}
               />
-              <Bar dataKey="count" fill="#ec4899" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" fill="#d9572f" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -322,40 +322,40 @@ const PoliceLogsAnalytics = ({ data }: Props) => {
                 type="monotone"
                 dataKey="TRAFFIC"
                 stackId="1"
-                stroke="#3b82f6"
-                fill="#3b82f6"
+                stroke="#2f7fb3"
+                fill="#2f7fb3"
                 name="Traffic"
               />
               <Area
                 type="monotone"
                 dataKey="MEDICAL"
                 stackId="1"
-                stroke="#ef4444"
-                fill="#ef4444"
+                stroke="#d9572f"
+                fill="#d9572f"
                 name="Medical"
               />
               <Area
                 type="monotone"
                 dataKey="DISTURBANCE"
                 stackId="1"
-                stroke="#f59e0b"
-                fill="#f59e0b"
+                stroke="#ffc2ad"
+                fill="#ffc2ad"
                 name="Disturbance"
               />
               <Area
                 type="monotone"
                 dataKey="ASSIST_SERVICE"
                 stackId="1"
-                stroke="#10b981"
-                fill="#10b981"
+                stroke="#c8d3da"
+                fill="#c8d3da"
                 name="Assist/Service"
               />
               <Area
                 type="monotone"
                 dataKey="OTHER"
                 stackId="1"
-                stroke="#6366f1"
-                fill="#6366f1"
+                stroke="#5cc6ff"
+                fill="#5cc6ff"
                 name="Other"
               />
             </AreaChart>

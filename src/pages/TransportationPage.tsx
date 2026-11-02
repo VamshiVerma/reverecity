@@ -11,12 +11,6 @@ const TransportationPage = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground flex items-center">
-          <Bus className="mr-3 text-highlight" /> Transportation
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Explore transportation data for Revere, Massachusetts, including commute time, modes of transportation, and car ownership statistics.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -59,7 +53,7 @@ const TransportationPage = () => {
                   { name: "45-59 min", value: 13 },
                   { name: "60+ min", value: 10 }
                 ]}
-                color="#673AB7"
+                color="#b9e3fb"
                 yAxisLabel="% of commuters"
                 height={300}
               />
@@ -96,7 +90,7 @@ const TransportationPage = () => {
                   { name: "Worked from Home", value: 5 },
                   { name: "Other", value: 1 }
                 ]}
-                colors={["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336", "#607D8B"]}
+                colors={["#0297DE", "#8a9ba8", "#FC734D", "#5cc6ff", "#f4a58a", "#2f7fb3"]}
                 height={300}
               />
             </div>
@@ -138,7 +132,7 @@ const TransportationPage = () => {
                   { name: "2 vehicles", value: 33 },
                   { name: "3+ vehicles", value: 15 }
                 ]}
-                color="#795548"
+                color="#ffc2ad"
                 yAxisLabel="% of households"
                 height={300}
               />

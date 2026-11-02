@@ -3,15 +3,17 @@ import { ReactNode, useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import LiveTicker from "./LiveTicker";
+import PageHero from "./layout/PageHero";
 import VisitorTracker from "./VisitorTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   pageTitle?: string;
+  hero?: ReactNode;
 }
 
-const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
+const DashboardLayout = ({ children, pageTitle, hero }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
   
@@ -46,7 +48,8 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
           <Header toggleSidebar={toggleSidebar} pageTitle={pageTitle} />
           <LiveTicker />
         </div>
-        <main className="flex-1 px-4 py-6 md:px-7 md:py-7">
+        {hero ?? <PageHero />}
+        <main className="flex-1 px-4 py-6 md:px-7 md:py-8">
           <div key={pageTitle} className="mx-auto w-full max-w-[1280px] animate-rise space-y-6">
             {children}
           </div>

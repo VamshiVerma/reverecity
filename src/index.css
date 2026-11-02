@@ -295,3 +295,6 @@ div[role="status"][data-sonner-toast] {
 @media (prefers-reduced-motion: reduce) {
   .sunrise .glow-blue, .sunrise .glow-sun, .sunrise .streaks, .voice-orb::before, .voice-orb::after { animation: none; }
 }
+.sunrise-band .glow-blue { bottom: -95%; height: 170%; width: 120%; left: 70%; }
+.sunrise-band .glow-sun { bottom: -42%; height: 70%; width: 46%; left: 78%; }
+.sunrise-band .horizon { bottom: 8%; }

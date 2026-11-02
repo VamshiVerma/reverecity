@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import type { PulseItem } from "@/lib/cityApi";
+import WeatherIcon from "@/components/WeatherIcon";
 import { cn } from "@/lib/utils";
 
 const ask = (q: string) => window.dispatchEvent(new CustomEvent("revere:ask", { detail: { q } }));
@@ -113,7 +114,10 @@ export function WeatherField({ w }: { w: Weather }) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[13px] text-white/75">Revere weather</p>
-          <div className="mt-1 font-serif-display text-[88px] leading-[0.85]">{w ? Math.round(w.temp) : "—"}°</div>
+          <div className="mt-1 flex items-center gap-4">
+            <span className="font-serif-display text-[88px] leading-[0.85]">{w ? Math.round(w.temp) : "—"}°</span>
+            {w && <WeatherIcon conditions={w.conditions} night={(() => { const h = Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })); return h < 6 || h >= 18; })()} className="h-16 w-16 text-[#ffd79a]" />}
+          </div>
           <p className="mt-2 text-[16px]">{w?.conditions ?? "Loading"}{w ? ` · feels ${Math.round(w.feels)}°` : ""}</p>
         </div>
         <Link to="/weather" className="text-[14px] font-medium text-white/90 hover:text-white">Forecast →</Link>
@@ -121,8 +125,9 @@ export function WeatherField({ w }: { w: Weather }) {
       {!!w?.alerts.length && <p className="mt-3 rounded-2xl bg-black/25 px-3 py-2 text-[14px] font-medium">⚠ {w.alerts.join(", ")}</p>}
       <ul className="mt-6 space-y-3">
         {days.map((d, i) => (
-          <li key={d.date} className="grid grid-cols-[44px_1fr_auto] items-center gap-3 text-[14px]">
+          <li key={d.date} className="grid grid-cols-[44px_24px_1fr_auto] items-center gap-3 text-[14px]">
             <span className="text-white/75">{new Date(d.date + "T12:00").toLocaleDateString("en-US", { weekday: "short" })}</span>
+            <WeatherIcon conditions={d.precipprob >= 50 ? "rain" : d.conditions} className="h-5 w-5 text-white/90" aria-label={d.conditions} />
             <div className="relative h-2 rounded-full bg-white/15">
               <motion.div className="absolute inset-y-0 rounded-full bg-gradient-to-r from-[#9fd8ff] to-[#FC734D]"
                 initial={reduce ? false : { scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.6 }}

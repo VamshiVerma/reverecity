@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/cards/StatCard";
+import WeatherIcon from "@/components/WeatherIcon";
 import { Cloud, Sun, Wind, Thermometer, Droplet, Gauge, Sunrise, Sunset, Umbrella, Eye, RefreshCw } from "lucide-react";
 import LineChart from "@/components/charts/LineChart";
 import { toast } from "sonner";
@@ -22,24 +23,9 @@ const WeatherPage: React.FC = () => {
   };
   
   // Get icon component based on weather condition icon
-  const getWeatherIcon = (icon: string) => {
-    switch(icon) {
-      case "rain":
-      case "showers-day":
-      case "showers-night":
-        return <Cloud className="h-5 w-5 text-blue-400" />;
-      case "cloudy":
-      case "partly-cloudy-day":
-      case "partly-cloudy-night":
-        return <Cloud className="h-5 w-5 text-muted-foreground" />;
-      case "wind":
-        return <Wind className="h-5 w-5 text-muted-foreground" />;
-      case "clear-day":
-        return <Sun className="h-5 w-5 text-yellow-400" />;
-      default:
-        return <Sun className="h-5 w-5 text-yellow-400" />;
-    }
-  };
+  const getWeatherIcon = (icon: string, size = "h-5 w-5") => (
+    <WeatherIcon conditions={(icon || "").replace(/-/g, " ")} night={(icon || "").includes("night")} className={`${size} text-highlight-secondary`} />
+  );
 
   // Format timestamp to readable time
   const formatTime = (timestamp: string) => {
@@ -142,15 +128,6 @@ const WeatherPage: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Weather Dashboard: {weatherData?.resolvedAddress || "Revere, MA"}</h1>
-            <p className="text-muted-foreground mt-2">
-              Current weather conditions and forecast for {weatherData?.resolvedAddress || "Revere"}
-              {weatherData?.fetchTimestamp && (
-                <span className="text-xs ml-2">
-                  (Updated: {new Date(weatherData.fetchTimestamp).toLocaleTimeString()})
-                </span>
-              )}
-            </p>
           </div>
           <Button 
             onClick={handleRefresh} 
@@ -325,7 +302,7 @@ const WeatherPage: React.FC = () => {
               <CardContent>
                 <LineChart 
                   data={prepareHourlyTempData()} 
-                  color="#FF5722"
+                  color="#FC734D"
                   yAxisLabel="Temperature (°F)"
                   height={300}
                 />

@@ -156,7 +156,7 @@ const RevenueBarChart = ({
             <Bar 
               dataKey="actual" 
               stackId="a"
-              fill="#10b981" // emerald-500
+              fill="#c8d3da" // emerald-500
               radius={[4, 4, 0, 0]}
               name="Actual"
             />
@@ -174,7 +174,7 @@ const RevenueBarChart = ({
             <Bar 
               dataKey="overBudget" 
               stackId="a"
-              fill="#ef4444" // red-500
+              fill="#d9572f" // red-500
               radius={[4, 4, 0, 0]}
               name="Over Budget"
             />
@@ -183,7 +183,7 @@ const RevenueBarChart = ({
             <Bar 
               dataKey="underBudget" 
               stackId="a"
-              fill="#f59e0b" // amber-500
+              fill="#ffc2ad" // amber-500
               radius={[4, 4, 0, 0]}
               name="Under Budget"
               opacity={0.7}

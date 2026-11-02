@@ -407,7 +407,7 @@ function DataCard({ card }: { card: AskCard }) {
       <div className={shell}>
         {card.alerts.map((a, i) => (
           <div key={i} className="flex gap-2 border-b border-border bg-amber-500/[0.06] p-3 text-xs text-foreground">
-            <span className="mt-0.5 shrink-0 rounded bg-amber-400/20 px-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground">{a.effect.replace(/_/g, " ")}</span>
+            <span className="mt-0.5 shrink-0 rounded bg-amber-400/20 px-1.5 text-[10px] font-bold text-foreground">{a.effect.replace(/_/g, " ")}</span>
             <span className="line-clamp-2">{a.header}</span>
           </div>
         ))}

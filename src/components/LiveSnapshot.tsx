@@ -59,7 +59,7 @@ function Card({ i, icon: Icon, tone, label, children, foot, to }: { i: number; i
     >
       <div className="mb-3 flex items-center gap-2">
         <span className={cn("grid h-7 w-7 place-items-center rounded-lg ring-1", tone)}><Icon className="h-4 w-4" /></span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground/70">{label}</span>
+        <span className="text-[11px] font-semibold text-foreground/70">{label}</span>
       </div>
       <div className="flex-1">{children}</div>
       <div className="mt-3 text-[11px] text-foreground/55">{foot}</div>

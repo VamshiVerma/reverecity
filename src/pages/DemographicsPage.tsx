@@ -10,12 +10,6 @@ const DemographicsPage = () => {
   return (
     <DashboardLayout pageTitle="Demographics">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground flex items-center">
-          <Users className="mr-3 text-highlight" /> Demographics
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Explore demographic data for Revere, Massachusetts, including citizenship, race and ethnicity, and foreign-born population.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -55,7 +49,7 @@ const DemographicsPage = () => {
                   { name: "US Citizen", value: 74 },
                   { name: "Non-Citizen", value: 26 }
                 ]}
-                colors={["#3F51B5", "#FF9800"]}
+                colors={["#b9e3fb", "#FC734D"]}
                 height={300}
               />
             </div>
@@ -91,7 +85,7 @@ const DemographicsPage = () => {
                   { name: "Two or More", value: 6 },
                   { name: "Other", value: 2 }
                 ]}
-                colors={["#2196F3", "#FF9800", "#4CAF50", "#9C27B0", "#F44336", "#607D8B"]}
+                colors={["#0297DE", "#FC734D", "#8a9ba8", "#5cc6ff", "#f4a58a", "#2f7fb3"]}
                 height={300}
               />
             </div>
@@ -133,7 +127,7 @@ const DemographicsPage = () => {
                   { name: "Foreign-born", value: 41 },
                   { name: "Native-born", value: 59 }
                 ]}
-                colors={["#00BCD4", "#CDDC39"]}
+                colors={["#5cc6ff", "#4b5a66"]}
                 height={300}
               />
             </div>

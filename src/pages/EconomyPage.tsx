@@ -14,12 +14,6 @@ const EconomyPage = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground flex items-center">
-          <TrendingUp className="mr-3 text-highlight" /> Economic Data
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Economic insights for Revere, Massachusetts
-        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -140,7 +134,7 @@ const EconomyPage = () => {
                   { name: "Finance", value: 4.5 },
                   { name: "Public Admin", value: 4.1 }
                 ]}
-                color="#2196F3"
+                color="#0297DE"
                 yAxisLabel="% of workforce"
                 height={300}
               />
@@ -228,7 +222,7 @@ const EconomyPage = () => {
                   { name: "Production & Transport", value: 12.8 },
                   { name: "Construction & Maintenance", value: 6.5 }
                 ]}
-                colors={["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336"]}
+                colors={["#8a9ba8", "#0297DE", "#FC734D", "#5cc6ff", "#f4a58a"]}
                 height={300}
               />
             </div>
@@ -323,7 +317,7 @@ const EconomyPage = () => {
                   { name: "Male (Full-time)", value: 47000 },
                   { name: "Female (Full-time)", value: 41000 }
                 ]}
-                color="#009688"
+                color="#2f7fb3"
                 yAxisLabel="Median earnings ($)"
                 height={300}
               />
