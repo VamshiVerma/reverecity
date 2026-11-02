@@ -121,9 +121,17 @@ function splitReasonAction(text: string): { reason: string; action: string } {
   return { reason: t, action: "" };
 }
 
+// Location lines can carry follow-on detail (incident refs, summons names/addresses/
+// charges). Keep only the place itself — never personal details.
+function cleanLocation(location: string): string {
+  return location
+    .replace(/\s*(Original Call #|Refer To|Revere Police Department - Public Log|Summons:|Arrest:|Address:|Age:|Charges:).*$/i, "")
+    .trim();
+}
+
 function extractStreet(location: string | null): string | null {
   if (!location) return null;
-  const s = location.replace(/\[REV\s*\d*\]\s*/, "").replace(/\s*\+\s*/g, " + ").trim();
+  const s = location.replace(/\[(REV|NEW)\s*\d*\]\s*/i, "").replace(/\s*\+\s*/g, " + ").trim();
   return s || null;
 }
 
@@ -171,7 +179,7 @@ function parseEntries(markdown: string, sourceUrl: string) {
 
     const loc = line.match(/^(?:Location\/Address|Location|Vicinity of):\s*(.+)$/i);
     if (loc && cur && !cur.location_address) {
-      const l = loc[1].trim();
+      const l = cleanLocation(loc[1].trim());
       cur.location_address = l;
       cur.location_code = l.match(/\[(REV\s*\d*)\]/)?.[1]?.trim() ?? null;
       cur.location_street = extractStreet(l);
