@@ -99,6 +99,19 @@ export default function Assistant() {
   }, [busy, msgs, readAloud]);
 
   const voice = useVoice({ onFinal: (t) => send(t, true) });
+  const sendRef = useRef(send);
+  sendRef.current = send;
+
+  // Other parts of the app can open the assistant (optionally with a question).
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      setOpen(true);
+      const q = (e as CustomEvent<{ q?: string }>).detail?.q;
+      if (q) setTimeout(() => sendRef.current?.(q), 350);
+    };
+    window.addEventListener("revere:ask", onAsk);
+    return () => window.removeEventListener("revere:ask", onAsk);
+  }, []);
 
   // Open with "/" or Cmd/Ctrl+K; close with Escape.
   useEffect(() => {

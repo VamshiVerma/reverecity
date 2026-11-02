@@ -110,136 +110,59 @@ export class PoliceLogsAnalyticsService {
   /**
    * Get weekly trends for last 12 weeks
    */
-  static async getWeeklyTrends() {
-    // Pull all logs and take the 12 most recent weeks that actually have data.
-    // The source only publishes a limited window, which may not be "this week",
-    // so filtering to the last 12 calendar weeks would show nothing.
-    const { data, error } = await supabase
-      .from('police_logs')
-      .select('log_date, action_category, call_type_category');
-
+  /**
+   * Daily rollup computed in Postgres (the REST API caps row reads at 1000).
+   */
+  private static async daily(): Promise<{ log_date: string; calls: number; reports: number; incidents: number }[]> {
+    const { data, error } = await supabase.rpc('police_daily' as any);
     if (error || !data) {
-      console.error('Error fetching weekly trends:', error);
+      console.error('Error fetching daily police rollup:', error);
       return [];
     }
-
-    // Group by week - store both the Date and formatted string
-    const weeklyData: {
-      [isoWeekStart: string]: {
-        weekStart: Date;
-        displayWeek: string;
-        calls: number;
-        reports: number;
-        incidents: number
-      }
-    } = {};
-
-    data.forEach(log => {
-      const date = new Date(log.log_date + 'T12:00:00');
-      // Get week start (Sunday)
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-
-      // Use ISO date as key for proper sorting
-      const isoWeekStart = weekStart.toISOString().split('T')[0];
-      const displayWeek = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-      if (!weeklyData[isoWeekStart]) {
-        weeklyData[isoWeekStart] = {
-          weekStart,
-          displayWeek,
-          calls: 0,
-          reports: 0,
-          incidents: 0
-        };
-      }
-
-      weeklyData[isoWeekStart].calls++;
-
-      if (log.action_category === 'REPORT') {
-        weeklyData[isoWeekStart].reports++;
-      }
-
-      // Count major incidents (arrests, serious calls)
-      if (log.action_category === 'ARREST' ||
-          log.call_type_category === 'DOMESTIC' ||
-          log.call_type_category === 'THREATS_VIOLENCE' ||
-          log.call_type_category === 'THEFT_PROPERTY') {
-        weeklyData[isoWeekStart].incidents++;
-      }
-    });
-
-    // Sort by ISO date (chronologically), then format for display
-    return Object.entries(weeklyData)
-      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([_, stats]) => ({
-        week: stats.displayWeek,
-        calls: stats.calls,
-        reports: stats.reports,
-        incidents: stats.incidents
-      }))
-      .slice(-12); // Last 12 weeks
+    return data as any;
   }
 
   /**
-   * Get monthly trends for the most recent year that has data
+   * Weekly trends: the 12 most recent weeks that have data.
+   */
+  static async getWeeklyTrends() {
+    const days = await this.daily();
+    const weekly: Record<string, { displayWeek: string; calls: number; reports: number; incidents: number }> = {};
+    for (const d of days) {
+      const date = new Date(d.log_date + 'T12:00:00');
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const key = weekStart.toISOString().split('T')[0];
+      const w = (weekly[key] ||= {
+        displayWeek: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        calls: 0, reports: 0, incidents: 0,
+      });
+      w.calls += Number(d.calls); w.reports += Number(d.reports); w.incidents += Number(d.incidents);
+    }
+    return Object.entries(weekly)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, w]) => ({ week: w.displayWeek, calls: w.calls, reports: w.reports, incidents: w.incidents }))
+      .slice(-12);
+  }
+
+  /**
+   * Monthly trends for the most recent year that has data.
    */
   static async getMonthlyTrends() {
-    const { data, error } = await supabase
-      .from('police_logs')
-      .select('log_date');
-
-    if (error || !data) {
-      console.error('Error fetching monthly trends:', error);
-      return [];
+    const days = await this.daily();
+    if (!days.length) return [];
+    const latestYear = Math.max(...days.map((d) => new Date(d.log_date + 'T12:00:00').getFullYear()));
+    const monthly: Record<string, { displayMonth: string; days: number; calls: number }> = {};
+    for (const d of days) {
+      const date = new Date(d.log_date + 'T12:00:00');
+      if (date.getFullYear() !== latestYear) continue;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const m = (monthly[key] ||= { displayMonth: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), days: 0, calls: 0 });
+      m.calls += Number(d.calls); m.days += 1;
     }
-
-    // Scope to the latest year present in the data (instead of a hardcoded year)
-    const latestYear = data.reduce((max, log) => {
-      const y = new Date(log.log_date + 'T12:00:00').getFullYear();
-      return y > max ? y : max;
-    }, 0);
-
-    // Group by month - use YYYY-MM format for proper sorting
-    const monthlyData: {
-      [yearMonth: string]: {
-        displayMonth: string;
-        dates: Set<string>;
-        calls: number
-      }
-    } = {};
-
-    data.forEach(log => {
-      const date = new Date(log.log_date + 'T12:00:00');
-      const year = date.getFullYear();
-      if (year !== latestYear) return; // only the most recent year with data
-      const month = date.getMonth();
-
-      // Use YYYY-MM as key for proper sorting
-      const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const displayMonth = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-
-      if (!monthlyData[yearMonth]) {
-        monthlyData[yearMonth] = {
-          displayMonth,
-          dates: new Set(),
-          calls: 0
-        };
-      }
-
-      monthlyData[yearMonth].calls++;
-      monthlyData[yearMonth].dates.add(log.log_date);
-    });
-
-    // Sort by YYYY-MM (chronologically), then format for display
-    return Object.entries(monthlyData)
-      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([_, stats]) => ({
-        month: stats.displayMonth,
-        calls: stats.calls,
-        avgPerDay: Math.round(stats.calls / stats.dates.size)
-      }));
+    return Object.entries(monthly)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, m]) => ({ month: m.displayMonth, calls: m.calls, avgPerDay: Math.round(m.calls / m.days) }));
   }
 
   /**
@@ -385,7 +308,9 @@ export class PoliceLogsAnalyticsService {
    * Get comparative stats (this week vs last week, etc.)
    */
   static async getComparisons() {
-    const now = new Date();
+    // Anchor to the latest posted log, not today's date: RPD publishes logs in batches.
+    const { data: latest } = await supabase.from('police_logs').select('log_date').order('log_date', { ascending: false }).limit(1);
+    const now = latest?.[0]?.log_date ? new Date(latest[0].log_date + 'T23:59:59') : new Date();
 
     // This week (Sunday to today)
     const thisWeekStart = new Date(now);

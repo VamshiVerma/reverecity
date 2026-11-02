@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect , useMemo} from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,20 @@ const PoliceLogsPage = () => {
 
   // Stats
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
+  const [latestLogDate, setLatestLogDate] = useState<string | null>(null);
+  // Trend: the 30 days up to the latest posted log. Drop a trailing partial day
+  // (logs end at 7am) so it doesn't read as a sudden drop in activity.
+  const recentDaily = useMemo(() => {
+    const rows = [...(dailyStats as any[])].sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
+    if (!rows.length) return rows;
+    const last = latestLogDate || rows[rows.length - 1].log_date;
+    const cutoff = new Date(new Date(last + 'T12:00:00').getTime() - 29 * 864e5).toISOString().slice(0, 10);
+    const inRange = rows.filter((r) => r.log_date >= cutoff && r.log_date <= last);
+    const counts = inRange.map((r) => Number(r.total_calls) || 0).sort((a, b) => a - b);
+    const median = counts[Math.floor(counts.length / 2)] || 0;
+    if (inRange.length > 3 && Number(inRange[inRange.length - 1].total_calls) < median * 0.4) inRange.pop();
+    return inRange;
+  }, [dailyStats, latestLogDate]);
   const [callTypeBreakdown, setCallTypeBreakdown] = useState<CallTypeBreakdown[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -144,8 +158,15 @@ const PoliceLogsPage = () => {
         .order('log_date', { ascending: true })
         .limit(1);
 
+      const { data: latestRow } = await supabase
+        .from('police_logs')
+        .select('log_date')
+        .order('log_date', { ascending: false })
+        .limit(1);
+      const latest = latestRow?.[0]?.log_date as string | undefined;
+      if (latest) setLatestLogDate(latest);
       const startDate = dateRange?.[0]?.log_date ? new Date(dateRange[0].log_date) : new Date('2025-09-01');
-      const endDate = new Date();
+      const endDate = latest ? new Date(latest + 'T23:59:59') : new Date();
 
       const [stats, breakdown] = await Promise.all([
         PoliceLogsService.getDailyStats(startDate, endDate),
@@ -286,10 +307,12 @@ const PoliceLogsPage = () => {
           <div>
             <h1 className="text-3xl font-bold text-light-text flex items-center gap-2">
               <Shield className="h-8 w-8 text-primary" />
-              Active Police Logs
+              Police Logs
             </h1>
             <p className="text-muted-foreground mt-1">
-              Real-time police activity logs from Revere Police Department
+              From the Revere Police Department's public dispatch log
+              {latestLogDate && <> · covers through <span className="text-foreground font-medium">{new Date(latestLogDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span></>}
+              {' '}· updates automatically when RPD posts a new log
             </p>
           </div>
           <Button onClick={handleManualSync} disabled={syncing}>
@@ -386,11 +409,11 @@ const PoliceLogsPage = () => {
           <Card>
             <CardHeader>
               <CardTitle>Daily Activity Trend</CardTitle>
-              <CardDescription>Calls per day (last 30 days)</CardDescription>
+              <CardDescription>Calls per day · 30 days to the latest log{latestLogDate ? ` (${new Date(latestLogDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dailyStats.slice(0, 30).reverse()}>
+                <LineChart data={recentDaily}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="log_date"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LiveSnapshot from "@/components/LiveSnapshot";
 import DashboardLayout from "@/components/DashboardLayout";
 import { 
   Card, 
@@ -195,58 +196,31 @@ const Index = () => {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
 
         <div className="relative p-6 md:p-8">
-          <div className="mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Revere, Massachusetts</h1>
-            <p className="text-white/80 max-w-2xl">
-              Comprehensive city dashboard with verified metrics, trends, and insights for residents, officials, and stakeholders.
-            </p>
+          <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
+                <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-70 motion-reduce:hidden" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-300" /></span>
+                Live · Revere, Massachusetts
+              </div>
+              <h1 className="font-display text-4xl font-semibold tracking-tight text-white md:text-5xl">
+                Your city, <span className="text-gradient">in plain English.</span>
+              </h1>
+              <p className="mt-3 text-[15px] leading-relaxed text-white/75">
+                Police logs, the city budget, the Blue Line and the weather, pulled from the official sources, kept current
+                automatically, and answerable by text or voice.
+              </p>
+            </div>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("revere:ask"))}
+              className="group inline-flex shrink-0 items-center gap-3 self-start rounded-full bg-white px-2 py-2 pr-5 text-sm font-semibold text-slate-900 shadow-[0_12px_40px_-12px_rgba(255,255,255,0.5)] transition hover:-translate-y-0.5 lg:self-auto"
+            >
+              <span className="orb h-8 w-8" />
+              Ask Revere anything
+              <kbd className="rounded-md bg-slate-900/10 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">/</kbd>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <p className="text-xs text-white/70 uppercase font-medium mb-1">Population</p>
-              <div className="flex justify-between items-baseline">
-                <h3 className="text-2xl font-bold text-white">{KeyMetrics.population.current.toLocaleString()}</h3>
-                <span className={`text-sm px-1.5 py-0.5 rounded ${KeyMetrics.population.change >= 0 ? 'bg-green-500/20 text-green-100' : 'bg-red-500/20 text-red-100'}`}>
-                  {KeyMetrics.population.change >= 0 ? '+' : ''}{KeyMetrics.population.change}%
-                </span>
-              </div>
-              <p className="text-xs text-white/60 mt-1">{KeyMetrics.population.timeDescription}</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <p className="text-xs text-white/70 uppercase font-medium mb-1">Annual Budget</p>
-              <div className="flex justify-between items-baseline">
-                <h3 className="text-2xl font-bold text-white">{formatNumber(KeyMetrics.budget.current)}</h3>
-                <span className={`text-sm px-1.5 py-0.5 rounded ${KeyMetrics.budget.change >= 0 ? 'bg-green-500/20 text-green-100' : 'bg-red-500/20 text-red-100'}`}>
-                  {KeyMetrics.budget.change >= 0 ? '+' : ''}{KeyMetrics.budget.change}%
-                </span>
-              </div>
-              <p className="text-xs text-white/60 mt-1">{KeyMetrics.budget.timeDescription}</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <p className="text-xs text-white/70 uppercase font-medium mb-1">Median Home Price</p>
-              <div className="flex justify-between items-baseline">
-                <h3 className="text-2xl font-bold text-white">{formatNumber(KeyMetrics.housingPrice.current)}</h3>
-                <span className={`text-sm px-1.5 py-0.5 rounded ${KeyMetrics.housingPrice.change >= 0 ? 'bg-green-500/20 text-green-100' : 'bg-red-500/20 text-red-100'}`}>
-                  {KeyMetrics.housingPrice.change >= 0 ? '+' : ''}{KeyMetrics.housingPrice.change}%
-                </span>
-              </div>
-              <p className="text-xs text-white/60 mt-1">{KeyMetrics.housingPrice.timeDescription}</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <p className="text-xs text-white/70 uppercase font-medium mb-1">Unemployment Rate</p>
-              <div className="flex justify-between items-baseline">
-                <h3 className="text-2xl font-bold text-white">{KeyMetrics.unemployment.current}%</h3>
-                <span className={`text-sm px-1.5 py-0.5 rounded ${KeyMetrics.unemployment.change <= 0 ? 'bg-green-500/20 text-green-100' : 'bg-red-500/20 text-red-100'}`}>
-                  {KeyMetrics.unemployment.change >= 0 ? '+' : ''}{KeyMetrics.unemployment.change}%
-                </span>
-              </div>
-              <p className="text-xs text-white/60 mt-1">{KeyMetrics.unemployment.timeDescription}</p>
-            </div>
-          </div>
+          <LiveSnapshot />
         </div>
       </div>
 

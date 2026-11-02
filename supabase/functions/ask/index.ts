@@ -62,24 +62,15 @@ async function policeContext(q: string) {
   if (!latestDate) return null;
   const since = new Date(new Date(latestDate).getTime() - 13 * 864e5).toISOString().slice(0, 10);
   const streets = streetsInQuestion(q, await knownStreets());
-
-  let query = supabase.from("police_logs")
-    .select("call_number,log_date,time_24h,call_reason,action,call_type_category,action_category,location_street,source_url")
-    .gte("log_date", since).order("timestamp", { ascending: false }).limit(1500);
-  if (streets.length) query = query.or(streets.map((s) => `location_street.ilike.%${s.replace(/[,()]/g, "")}%`).join(","));
-  const { data: rows } = await query;
-  const list = rows || [];
-
-  const byCat: Record<string, number> = {}, byStreet: Record<string, number> = {}, byHour: Record<string, number> = {};
-  for (const r of list) {
-    byCat[r.call_type_category] = (byCat[r.call_type_category] || 0) + 1;
-    if (r.location_street) byStreet[r.location_street] = (byStreet[r.location_street] || 0) + 1;
-    const h = r.time_24h?.slice(0, 2); if (h) byHour[h] = (byHour[h] || 0) + 1;
-  }
-  const top = (o: Record<string, number>, n: number) => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n);
-  const notable = list.filter((r) => NOTABLE.includes(r.call_type_category) || r.action_category === "ARREST").slice(0, 25);
-  const sourceUrls = [...new Set(list.map((r) => r.source_url).filter(Boolean))].slice(0, 3);
-  return { latestDate, since, streets, total: list.length, byCat: top(byCat, 10), byStreet: top(byStreet, 8), byHour: top(byHour, 4), notable, sourceUrls };
+  // Aggregated in Postgres: the REST API caps row reads at 1000.
+  const { data, error } = await supabase.rpc("police_stats", { since, until: latestDate, streets: streets.length ? streets : null });
+  if (error || !data) return null;
+  const pairs = (a: any[]) => (a || []).map((x: any) => [x.k, x.n] as [string, number]);
+  return {
+    latestDate, since, streets, total: data.total as number,
+    byCat: pairs(data.by_category).slice(0, 10), byStreet: pairs(data.by_street).slice(0, 8), byHour: pairs(data.by_hour).slice(0, 4),
+    notable: (data.notable || []) as any[], sourceUrls: (data.sources || []).filter(Boolean).slice(0, 3) as string[],
+  };
 }
 
 // ---------- budget ----------
@@ -294,7 +285,7 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       // Grounded answer without an LLM: honest, structured, sourced.
       const parts: string[] = [];
       if (police) {
-        parts.push(`**Police activity${police.streets.length ? " around " + police.streets.map(title).join(", ") : " in Revere"}** — ${police.total} calls logged ${fmtDate(police.since)} to ${fmtDate(police.latestDate)} (latest posted RPD log).`);
+        parts.push(`**Police activity${police.streets.length ? " around " + police.streets.map(title).join(", ") : " in Revere"}** — ${police.total.toLocaleString("en-US")} calls logged ${fmtDate(police.since)} to ${fmtDate(police.latestDate)} (latest posted RPD log).`);
         if (police.byCat.length) parts.push(`- Most common: ${police.byCat.slice(0, 4).map(([k, v]) => `${pretty(k)} (${v})`).join(", ")}`);
         if (police.byHour.length) parts.push(`- Busiest hours: ${police.byHour.slice(0, 3).map(([h]) => `${Number(h) % 12 || 12}${Number(h) < 12 ? "am" : "pm"}`).join(", ")}`);
         police.notable.slice(0, 4).forEach((r) => parts.push(`- ${fmtDate(r.log_date)}, ${r.time_24h}: ${title(r.call_reason)}${r.location_street ? " on " + title(r.location_street) : ""} → ${title(r.action).toLowerCase()}`));

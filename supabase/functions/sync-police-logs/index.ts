@@ -34,9 +34,16 @@ const ACTIONS = [
 interface DiscoveredLog { pdfUrl: string; title: string; startDate: string | null }
 
 async function fetchMarkdown(url: string): Promise<string> {
-  const res = await fetch(JINA + url, { headers: { Accept: "text/markdown", "x-no-cache": "true" } });
-  if (!res.ok) throw new Error(`fetch ${url} -> ${res.status}`);
-  return await res.text();
+  // The PDF-to-text reader rate-limits bursts; back off and retry on 429/5xx.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(JINA + url, { headers: { Accept: "text/markdown", "x-no-cache": "true" } });
+    if (res.ok) return await res.text();
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+      await new Promise((r) => setTimeout(r, 4000 * (attempt + 1)));
+      continue;
+    }
+    throw new Error(`fetch ${url} -> ${res.status}`);
+  }
 }
 
 function isoFromLongDate(s: string): string | null {
@@ -209,12 +216,19 @@ Deno.serve(async (req) => {
     const max = Math.max(1, Math.min(5, Number(url.searchParams.get("max") || 3)));
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const logs = await discoverLogs();
+    // Optional: re-process specific archived PDFs (only from the PD's own CDN).
+    const explicit = (url.searchParams.get("pdf") || "").split(",").map((x) => x.trim()).filter((x) => /^https:\/\/files\.aptuitivcdn\.com\/107BKN7wPn-1826\/docs\/media-log\/[\w.\-]+\.pdf$/i.test(x));
+    const logs = explicit.length
+      ? explicit.map((pdfUrl) => {
+          const m = pdfUrl.match(/media-log-(\d{2})(\d{2})(\d{2})_redacted/i);
+          return { pdfUrl, title: pdfUrl.split("/").pop()!, startDate: m ? `20${m[3]}-${m[1]}-${m[2]}` : null };
+        })
+      : await discoverLogs();
     if (!logs.length) return json({ success: true, message: "No logs listed on source", discovered: 0 });
 
     const { data: done } = await supabase.from("police_logs_sync_status").select("source_url").eq("status", "success");
     const doneSet = new Set((done || []).map((d: any) => d.source_url));
-    const todo = logs.filter((l) => force || !doneSet.has(l.pdfUrl)).slice(0, max);
+    const todo = logs.filter((l) => force || explicit.length || !doneSet.has(l.pdfUrl)).slice(0, explicit.length ? 8 : max);
 
     const results: any[] = [];
     for (const log of todo) {
