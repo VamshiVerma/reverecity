@@ -298,3 +298,11 @@ div[role="status"][data-sonner-toast] {
 .sunrise-band .glow-blue { bottom: -95%; height: 170%; width: 120%; left: 70%; }
 .sunrise-band .glow-sun { bottom: -42%; height: 70%; width: 46%; left: 78%; }
 .sunrise-band .horizon { bottom: 8%; }
+/* The sunrise's light carries faintly down the whole page so sections share one atmosphere. */
+.dark body {
+  background-image:
+    radial-gradient(70rem 46rem at 0% -10%, hsl(199 98% 44% / 0.10), transparent 62%),
+    radial-gradient(60rem 40rem at 100% 110%, hsl(13 97% 64% / 0.08), transparent 60%);
+  background-attachment: fixed;
+}
+.sunrise::after { content: ""; position: absolute; inset: auto 0 0 0; height: 14%; background: linear-gradient(180deg, transparent, hsl(var(--background))); pointer-events: none; }

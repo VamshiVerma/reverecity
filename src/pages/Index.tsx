@@ -137,7 +137,7 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
         <div className="glow-blue" /><div className="glow-sun" /><div className="streaks" /><div className="horizon" /><div className="grain" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-40px)] max-w-[1280px] flex-col px-4 pb-8 pt-6 md:min-h-[760px] md:px-7 md:pt-8">
+      <div className="relative mx-auto flex max-w-[1280px] flex-col px-4 pb-10 pt-5 md:min-h-[680px] md:px-7 md:pt-8">
         <div className="flex items-center justify-between text-[13px] text-white/70">
           <span className="flex items-center gap-2">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-secondary opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-highlight-secondary" /></span>
@@ -146,7 +146,7 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
           <span className="tnum">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })}</span>
         </div>
 
-        <div className="relative mt-10 flex flex-1 flex-col items-center text-center md:mt-14">
+        <div className="relative mt-8 flex flex-1 flex-col items-center text-center md:mt-12">
           <h1 className="font-serif-display text-[clamp(52px,8vw,112px)] leading-[0.95] tracking-[-0.02em]">
             <span className="block">
               {words.map((w, i) => (
