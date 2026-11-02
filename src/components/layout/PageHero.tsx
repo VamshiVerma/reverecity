@@ -4,16 +4,16 @@ import { motion, useReducedMotion } from "framer-motion";
 // One header for every page: the same sunrise light, a serif title with one italic cantaloupe word.
 const PAGES: Record<string, { kicker: string; title: string; accent: string; text: string }> = {
   "/police-logs": { kicker: "Revere Police Department public log", title: "What police were", accent: "called for", text: "Every call from the department's published dispatch log, in plain English. New logs are added automatically when they're posted." },
-  "/mbta": { kicker: "MBTA · live", title: "The Blue Line &", accent: "buses", text: "Live arrivals, alerts and service changes for Wonderland, Revere Beach, Beachmont, Suffolk Downs and the bus routes through Revere." },
+  "/mbta": { kicker: "MBTA · live", title: "The Blue Line &", accent: "buses", text: "Alerts, the next trains and buses, and how the line is running at Wonderland, Revere Beach, Beachmont, Suffolk Downs and the bus stops in between. Straight from the MBTA, updated every few seconds." },
   "/weather": { kicker: "Open-Meteo forecast · National Weather Service alerts", title: "Weather on the", accent: "beach", text: "Conditions right now, the week ahead and any active warnings for Revere." },
   "/budget": { kicker: "FY2027 & FY2026 adopted budgets", title: "Where the money", accent: "goes", text: "Search any department, compare it with last year and open the exact page in the city's budget document." },
   "/revenue": { kicker: "FY2027 adopted budget · revenue section", title: "How Revere", accent: "pays for it", text: "Property taxes, state aid and local fees over ten years, using the city's own figures. Striped bars are projections." },
   "/housing": { kicker: "Zillow Research · refreshed monthly", title: "What it costs to", accent: "live here", text: "Typical home values and rents for Revere (02151) next to the communities around it." },
-  "/demographics": { kicker: "U.S. Census Bureau", title: "Who lives in", accent: "Revere", text: "Population, ages, languages and where Revere's residents were born." },
-  "/economic": { kicker: "Jobs & economy", title: "How Revere", accent: "works", text: "Incomes, jobs and the local economy." },
+  "/demographics": { kicker: "U.S. Census Bureau · American Community Survey", title: "Who lives in", accent: "Revere", text: "How many people live here, where they were born, how old they are and whether they rent or own, next to Massachusetts as a whole." },
+  "/economic": { kicker: "U.S. Census Bureau · American Community Survey", title: "How Revere", accent: "earns a living", text: "Household incomes, what residents do for work and what it pays, and who lives below the poverty line, next to the state." },
   "/education": { kicker: "Revere Public Schools", title: "Revere's", accent: "schools", text: "Enrollment, outcomes and the district's budget." },
-  "/health": { kicker: "Public health", title: "Health in", accent: "Revere", text: "Coverage, care and community health measures." },
-  "/transportation": { kicker: "Getting around", title: "How Revere", accent: "gets around", text: "Commutes, car ownership and the ways residents travel." },
+  "/health": { kicker: "Census Bureau · CDC PLACES", title: "Keeping Revere", accent: "healthy", text: "Who has health insurance, who goes without, and how Revere adults are doing on checkups, chronic conditions and everyday needs." },
+  "/transportation": { kicker: "Census Bureau · American Community Survey", title: "Getting to", accent: "work", text: "How Revere residents commute, how long it takes and how that compares with the rest of Massachusetts." },
   "/crime": { kicker: "Public safety", title: "Staying", accent: "safe", text: "Safety measures for Revere. For what happened this week, see the police log." },
   "/analytics": { kicker: "Site", title: "Visitor", accent: "analytics", text: "How people use Revere.City." },
 };
