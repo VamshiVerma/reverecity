@@ -1,347 +1,238 @@
-// Supabase Edge Function - Daily Police Logs Sync
-// This runs automatically every day via cron to sync new police logs
+// Supabase Edge Function — Revere police public-log sync.
+// Discovers the PD's published dispatch logs, parses every call entry and upserts
+// them into `police_logs`. Idempotent: entries upsert on call_number and each
+// source PDF is recorded in `police_logs_sync_status`.
+//
+// Query params: ?force=1 re-processes logs already synced; ?max=N caps PDFs per run.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Scraper to discover available PDFs
-async function discoverAvailableLogs() {
-  console.log('[SYNC] Discovering available police logs from news page...');
+const LISTING_URL = "https://reverepolice.org/public-media-log";
+const JINA = "https://r.jina.ai/";
 
-  const jinaUrl = 'https://r.jina.ai/https://reverepolice.org/news/';
-  const response = await fetch(jinaUrl, {
-    headers: { 'Accept': 'text/markdown' }
-  });
+const MONTHS: Record<string, number> = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7,
+  august: 8, september: 9, october: 10, november: 11, december: 12,
+};
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch news page: ${response.status}`);
-  }
+// Actions the department uses, matched as a suffix of "<reason> <action>".
+const ACTIONS = [
+  "AMBULANCE TRANSPORT- MASS GEN", "TAKEN/REFERRED TO OTHER AGENCY", "OFFICER SPOKE TO SUBJECT",
+  "UNABLE TO LOCATE SUBJECT", "UNABLE TO LOCATE CALLER", "BUILDING CHECKED/SECURED",
+  "NO SIGN OF FORCED ENTRY", "TRANSPORTED TO HOSPITAL", "TRANSPORTED TO COURT",
+  "CITATION/WARNING ISSUED", "MVA - PAPERS EXCHANGED", "NO VIOLATION OBSERVED",
+  "PARKING TICKER ISSUED", "PARKING TICKET ISSUED", "CALL LOG ENTRY ONLY", "NO ACTION REQUIRED",
+  "SERVICES RENDERED", "VIOLATION OBSERVED", "AMBULANCE TRANSPORT", "PROTECTIVE CUSTODY",
+  "ASSIST OTHER AGENCY", "SUBJECT HAS MOVED", "BE ON THE LOOKOUT", "TOW MOTOR VEHICLE",
+  "PAPERWORK SERVED", "REPORT TO FOLLOW", "REFUSED RESPONSE", "MASTER BOX RESET",
+  "NO SERVICE MADE", "GONE ON ARRIVAL", "NOTHING SHOWING", "ACCIDENTAL TRIP", "PEACE RESTORED",
+  "ARREST(S) MADE", "SUMMONS ISSUED", "VERBAL WARNING", "UNABLE TO LOCATE", "VEHICLE MOVED",
+  "SERVICE MADE", "FALSE ALARM", "MEDICAL AID", "INVESTIGATED", "AREA QUIET", "AREA CLEAR",
+  "UNFOUNDED", "CANCELLED", "LARCENY", "ADVISED", "CLEARED", "OTHER",
+].sort((a, b) => b.length - a.length);
 
-  const markdown = await response.text();
+interface DiscoveredLog { pdfUrl: string; title: string; startDate: string | null }
 
-  // The Revere PD site now publishes daily "media logs" as PDFs on their CDN,
-  // e.g. https://files.aptuitivcdn.com/.../media-log/media-log-040224_redacted.pdf
-  // where 040224 = MM DD YY (April 2, 2024).
-  const linkRegex = /https:\/\/[^\s"'()]*media-log-(\d{6})_redacted\.pdf/gi;
-  const matches = [...markdown.matchAll(linkRegex)];
-
-  const logs = [];
-  const seenUrls = new Set();
-
-  for (const match of matches) {
-    const pdfUrl = match[0];
-    const digits = match[1]; // MMDDYY
-
-    const month = parseInt(digits.slice(0, 2), 10);
-    const day = parseInt(digits.slice(2, 4), 10);
-    const year = parseInt(digits.slice(4, 6), 10) + 2000;
-    if (!month || !day) continue;
-
-    const startDate = new Date(year, month - 1, day);
-    // Each PDF covers a single day; endDate is the next day so the
-    // sync-status day-marking loop records exactly this date.
-    const endDate = new Date(year, month - 1, day + 1);
-
-    if (seenUrls.has(pdfUrl)) continue;
-    seenUrls.add(pdfUrl);
-
-    const dateRangeStr = startDate.toISOString().split('T')[0];
-    logs.push({ startDate, endDate, pdfUrl, dateRangeStr });
-  }
-
-  console.log(`[SYNC] Discovered ${logs.length} police logs`);
-  return logs;
+async function fetchMarkdown(url: string): Promise<string> {
+  const res = await fetch(JINA + url, { headers: { Accept: "text/markdown", "x-no-cache": "true" } });
+  if (!res.ok) throw new Error(`fetch ${url} -> ${res.status}`);
+  return await res.text();
 }
 
-function parseLogDate(dateStr: string): Date | null {
-  try {
-    const cleanStr = dateStr.replace(/-7am$/, '');
-    const parts = cleanStr.split('-');
-    if (parts.length !== 3) return null;
+function isoFromLongDate(s: string): string | null {
+  const m = s.match(/([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/);
+  if (!m) return null;
+  const mo = MONTHS[m[1].toLowerCase()];
+  if (!mo) return null;
+  return `${m[3]}-${String(mo).padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+}
 
-    const month = parseInt(parts[0], 10);
-    const day = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10) + 2000;
-
-    return new Date(year, month - 1, day);
-  } catch {
-    return null;
+// Parse the listing page: "Public Log October 15, 2026 7am to ... (redacted)" followed by its PDF link.
+// Also accepts the older single-day "Media Log MMDDYY" entries.
+async function discoverLogs(): Promise<DiscoveredLog[]> {
+  const md = await fetchMarkdown(LISTING_URL);
+  const lines = md.split("\n").map((l) => l.trim()).filter(Boolean);
+  const out: DiscoveredLog[] = [];
+  const seen = new Set<string>();
+  let lastTitle = "";
+  for (const line of lines) {
+    if (/^(Public Log|Media Log)\b/i.test(line)) { lastTitle = line; continue; }
+    const link = line.match(/https:\/\/[^\s)"']+\/media-log\/[^\s)"']+\.pdf/i);
+    if (!link) continue;
+    const pdfUrl = link[0];
+    if (/press-release/i.test(pdfUrl) || seen.has(pdfUrl)) continue;
+    seen.add(pdfUrl);
+    let startDate = lastTitle ? isoFromLongDate(lastTitle) : null;
+    if (!startDate) {
+      const mmddyy = pdfUrl.match(/media-log-(\d{2})(\d{2})(\d{2})_redacted/i);
+      if (mmddyy) startDate = `20${mmddyy[3]}-${mmddyy[1]}-${mmddyy[2]}`;
+    }
+    out.push({ pdfUrl, title: lastTitle || pdfUrl.split("/").pop()!, startDate });
+    lastTitle = "";
   }
+  return out;
 }
 
-// Find unsynced logs
-async function findUnsyncedLogs(supabase: any, allLogs: any[]) {
-  const { data: syncedLogs } = await supabase
-    .from('police_logs_sync_status')
-    .select('sync_date, status')
-    .eq('status', 'success');
-
-  const syncedDates = new Set(syncedLogs?.map((s: any) => s.sync_date) || []);
-
-  const unsynced = allLogs.filter((log: any) => {
-    const dateStr = log.startDate.toISOString().split('T')[0];
-    return !syncedDates.has(dateStr);
-  });
-
-  console.log(`[SYNC] Total: ${allLogs.length}, Already synced: ${allLogs.length - unsynced.length}, Unsynced: ${unsynced.length}`);
-  return unsynced;
-}
-
-// Derive a normalized call-type category from the entry text
 function categorizeCallType(text: string): string {
-  const reason = (text || '').toUpperCase();
-  if (reason.includes('TRAFFIC') || reason.includes('MOTOR VEHICLE') || reason.includes('PARKING')) return 'TRAFFIC';
-  if (reason.includes('MEDICAL') || reason.includes('AMBULANCE') || reason.includes('OVERDOSE')) return 'MEDICAL';
-  if (reason.includes('FIRE') || reason.includes('SMOKE') || reason.includes('ALARM')) return 'FIRE_SAFETY';
-  if (reason.includes('DISTURBANCE') || reason.includes('NOISE') || reason.includes('FIGHT')) return 'DISTURBANCE';
-  if (reason.includes('DOMESTIC')) return 'DOMESTIC';
-  if (reason.includes('LARCENY') || reason.includes('THEFT') || reason.includes('ROBBERY') ||
-      reason.includes('BURGLARY') || reason.includes('BREAKING')) return 'THEFT_PROPERTY';
-  if (reason.includes('ASSIST') || reason.includes('WELL BEING') || reason.includes('CHECK')) return 'ASSIST_SERVICE';
-  if (reason.includes('SUSPICIOUS')) return 'SUSPICIOUS';
-  if (reason.includes('911')) return 'EMERGENCY_CALL';
-  if (reason.includes('MISSING')) return 'MISSING_PERSON';
-  return 'OTHER';
+  const r = (text || "").toUpperCase();
+  if (/SHOTS|ASSAULT|STABB|WEAPON|THREAT|ROBBERY|FIGHT/.test(r)) return "VIOLENCE_THREATS";
+  if (/DOMESTIC|209 A|E R O/.test(r)) return "DOMESTIC";
+  if (/LARCENY|THEFT|SHOPLIFT|BURGLARY|BREAKING|VANDALISM|STOLEN/.test(r)) return "THEFT_PROPERTY";
+  if (/ACCIDENT|MVA|HIT & RUN/.test(r)) return "CRASH";
+  if (/TRAFFIC|MOTOR VEHICLE|PARKING|TOW/.test(r)) return "TRAFFIC";
+  if (/MEDICAL|AMBULANCE|OVERDOSE|SICK|INJUR/.test(r)) return "MEDICAL";
+  if (/FIRE|SMOKE|ALARM/.test(r)) return "FIRE_ALARM";
+  if (/DISTURBANCE|NOISE|HARRASS|HARASS/.test(r)) return "DISTURBANCE";
+  if (/SUSPICIOUS/.test(r)) return "SUSPICIOUS";
+  if (/911/.test(r)) return "EMERGENCY_CALL";
+  if (/MISSING/.test(r)) return "MISSING_PERSON";
+  if (/ASSIST|WELL BEING|CHECK|PATROL|COMMUNITY|COURTESY/.test(r)) return "ASSIST_SERVICE";
+  return "OTHER";
 }
 
 function categorizeAction(action: string): string {
-  const act = (action || '').toUpperCase();
-  if (act.includes('NO ACTION')) return 'NO_ACTION';
-  if (act.includes('SERVICES RENDERED')) return 'SERVICES_RENDERED';
-  if (act.includes('REPORT')) return 'REPORT';
-  if (act.includes('WARNING')) return 'WARNING';
-  if (act.includes('ARREST')) return 'ARREST';
-  if (act.includes('SUMMONS')) return 'SUMMONS';
-  if (act.includes('REFERRED') || act.includes('TRANSFER')) return 'REFERRED';
-  if (act.includes('GONE ON ARRIVAL')) return 'GONE_ON_ARRIVAL';
-  if (act.includes('UNABLE TO LOCATE')) return 'UNABLE_TO_LOCATE';
-  if (act.includes('PROTECTIVE CUSTODY')) return 'PROTECTIVE_CUSTODY';
-  if (act.includes('UNFOUNDED')) return 'UNFOUNDED';
-  if (act.includes('INVESTIGATED')) return 'INVESTIGATED';
-  return 'OTHER';
+  const a = (action || "").toUpperCase();
+  if (a.includes("ARREST")) return "ARREST";
+  if (a.includes("SUMMONS")) return "SUMMONS";
+  if (a.includes("REPORT")) return "REPORT";
+  if (a.includes("CITATION") || a.includes("WARNING") || a.includes("TICKE")) return "WARNING";
+  if (a.includes("SERVICES RENDERED")) return "SERVICES_RENDERED";
+  if (a.includes("NO ACTION") || a.includes("LOG ENTRY")) return "NO_ACTION";
+  if (a.includes("REFERRED") || a.includes("TRANSFER")) return "REFERRED";
+  if (a.includes("HOSPITAL") || a.includes("AMBULANCE") || a.includes("MEDICAL")) return "MEDICAL";
+  if (a.includes("UNFOUNDED") || a.includes("NOTHING SHOWING") || a.includes("FALSE")) return "UNFOUNDED";
+  if (a.includes("UNABLE TO LOCATE") || a.includes("GONE ON ARRIVAL")) return "UNABLE_TO_LOCATE";
+  if (a.includes("PEACE RESTORED") || a.includes("SPOKE TO")) return "RESOLVED";
+  return "OTHER";
 }
 
-function extractLocationCode(location: string | null): string | null {
+function splitReasonAction(text: string): { reason: string; action: string } {
+  const t = text.trim();
+  const u = t.toUpperCase();
+  for (const a of ACTIONS) {
+    if (u.endsWith(" " + a) && u.length > a.length + 1) {
+      return { reason: t.slice(0, t.length - a.length).trim().replace(/,$/, ""), action: t.slice(t.length - a.length) };
+    }
+  }
+  const amb = t.match(/^(.*?)\s+(AMBULANCE TRANSPORT.*)$/i);
+  if (amb) return { reason: amb[1], action: amb[2] };
+  const code = t.match(/^(.*?)\s+(\d{3})$/);
+  if (code) return { reason: code[1], action: code[2] };
+  return { reason: t, action: "" };
+}
+
+function extractStreet(location: string | null): string | null {
   if (!location) return null;
-  const match = location.match(/\[(REV\s*\d*)\]/);
-  return match ? match[1].trim() : null;
+  const s = location.replace(/\[REV\s*\d*\]\s*/, "").replace(/\s*\+\s*/g, " + ").trim();
+  return s || null;
 }
 
-function extractStreetName(location: string | null): string | null {
-  if (!location) return null;
-  const street = location.replace(/\[REV\s*\d*\]\s*/, '').replace(/\s*\+\s*/g, ' + ').trim();
-  return street || null;
-}
+function parseEntries(markdown: string, sourceUrl: string) {
+  const entries: any[] = [];
+  let cur: any = null;
+  let currentDate: string | null = null;
+  const footer = /\s*Revere Police Department - Public Log Page:\s*\d+\s*$/i;
 
-// Parse markdown log entries
-function parseLogEntries(markdown: string, logDate: Date, sourceUrl: string) {
-  const entries = [];
-  const lines = markdown.split('\n');
-  let currentEntry: any = null;
-  let currentDate = new Date(logDate); // Default to provided date
+  for (const raw of markdown.split("\n")) {
+    const line = raw.replace(footer, "").trim();
+    if (!line) continue;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Check for ANY date header (flexible matching)
-    // Matches lines with dates like: "# For Date: 09/19/2025" or "## Log Entries for 09/19/2025" etc
-    if (trimmed.startsWith('#') || trimmed.toLowerCase().includes('date')) {
-      const dateMatch = trimmed.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      if (dateMatch) {
-        const month = parseInt(dateMatch[1], 10);
-        const day = parseInt(dateMatch[2], 10);
-        const year = parseInt(dateMatch[3], 10);
-        currentDate = new Date(year, month - 1, day);
-        console.log(`[DATE] Found date header: ${currentDate.toISOString().split('T')[0]} from line: ${trimmed.substring(0, 50)}`);
-        continue;
-      }
+    const forDate = line.match(/For Date:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+    if (forDate) { currentDate = `${forDate[3]}-${forDate[1]}-${forDate[2]}`; continue; }
+    if (!currentDate) {
+      const from = line.match(/Dispatch Log From:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+      if (from) currentDate = `${from[3]}-${from[1]}-${from[2]}`;
     }
 
-    // Match entry line: 25-55315 0733 FIRE, ALARMS SOUNDING OTHER
-    const entryMatch = trimmed.match(/^(\d{2}-\d{5})\s+(\d{4})\s+(.+?)\s+([A-Z][A-Z\s/,]+)$/);
-
-    if (entryMatch) {
-      if (currentEntry) {
-        entries.push(currentEntry);
-      }
-
-      const [, callNumber, time24h, callReason, action] = entryMatch;
-      const combined = `${callReason} ${action}`;
-
-      currentEntry = {
+    const m = line.replace(/^Call Number Time Call Reason Action\s+/i, "")
+      .match(/^(\d{2}-\d{4,6})\s+(\d{4})\s+(.+)$/);
+    if (m && currentDate) {
+      if (cur) entries.push(cur);
+      const [, callNumber, time24h, rest] = m;
+      const { reason, action } = splitReasonAction(rest);
+      const ts = new Date(`${currentDate}T${time24h.slice(0, 2)}:${time24h.slice(2)}:00-04:00`);
+      cur = {
         call_number: callNumber,
-        log_date: currentDate.toISOString().split('T')[0],
+        log_date: currentDate,
         time_24h: time24h,
-        timestamp: buildTimestamp(currentDate, time24h).toISOString(),
-        call_reason: callReason.trim(),
-        call_type_category: categorizeCallType(combined),
-        action: action.trim(),
+        timestamp: isNaN(ts.getTime()) ? `${currentDate}T00:00:00Z` : ts.toISOString(),
+        call_reason: reason,
+        call_type_category: categorizeCallType(reason),
+        action: action || "UNSPECIFIED",
         action_category: categorizeAction(action),
         location_code: null,
         location_address: null,
         location_street: null,
-        raw_entry: trimmed,
-        source_url: sourceUrl
+        raw_entry: line,
+        source_url: sourceUrl,
       };
-    } else if (currentEntry) {
-      // Location can appear as "Location/Address:", "Location:", or "Vicinity of:"
-      const locationMatch = trimmed.match(/^(?:Location\/Address|Location|Vicinity of):\s*(.+)/i);
-      if (locationMatch) {
-        const loc = locationMatch[1].trim();
-        currentEntry.location_address = loc;
-        currentEntry.location_code = extractLocationCode(loc);
-        currentEntry.location_street = extractStreetName(loc);
-      }
+      continue;
+    }
+
+    const loc = line.match(/^(?:Location\/Address|Location|Vicinity of):\s*(.+)$/i);
+    if (loc && cur && !cur.location_address) {
+      const l = loc[1].trim();
+      cur.location_address = l;
+      cur.location_code = l.match(/\[(REV\s*\d*)\]/)?.[1]?.trim() ?? null;
+      cur.location_street = extractStreet(l);
     }
   }
+  if (cur) entries.push(cur);
 
-  if (currentEntry) {
-    entries.push(currentEntry);
-  }
-
-  console.log(`[PARSE] Parsed ${entries.length} entries from ${markdown.split('\n').length} lines`);
-  return entries;
+  // De-duplicate call numbers within one PDF (last wins).
+  const byCall = new Map<string, any>();
+  for (const e of entries) byCall.set(e.call_number, e);
+  return [...byCall.values()];
 }
 
-function buildTimestamp(date: Date, time24h: string): Date {
-  const hours = parseInt(time24h.substring(0, 2));
-  const minutes = parseInt(time24h.substring(2, 4));
-  const timestamp = new Date(date);
-  timestamp.setHours(hours, minutes, 0, 0);
-  return timestamp;
-}
-
-// Sync a discovered log
-async function syncDiscoveredLog(supabase: any, log: any) {
-  console.log(`[SYNC] Syncing: ${log.dateRangeStr}`);
-
-  try {
-    const jinaUrl = `https://r.jina.ai/${log.pdfUrl}`;
-    const response = await fetch(jinaUrl, {
-      headers: { 'Accept': 'text/markdown' }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status}`);
-    }
-
-    const markdown = await response.text();
-    const entries = parseLogEntries(markdown, log.startDate, log.pdfUrl);
-
-    if (entries.length === 0) {
-      console.log(`[WARN] No entries parsed from ${log.dateRangeStr}`);
-      return { success: true, recordsAdded: 0 };
-    }
-
-    // Save entries
-    const { error: insertError } = await supabase
-      .from('police_logs')
-      .upsert(entries, { onConflict: 'call_number' });
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    // Mark dates as synced
-    const datesCovered = [];
-    const current = new Date(log.startDate);
-    while (current < log.endDate) {
-      datesCovered.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
-
-    for (const date of datesCovered) {
-      const dateStr = date.toISOString().split('T')[0];
-      await supabase
-        .from('police_logs_sync_status')
-        .upsert({
-          sync_date: dateStr,
-          status: 'success',
-          records_added: entries.length,
-          source_url: log.pdfUrl,
-          synced_at: new Date().toISOString()
-        }, { onConflict: 'sync_date' });
-    }
-
-    console.log(`[SUCCESS] Synced ${entries.length} records from ${log.dateRangeStr}`);
-    return { success: true, recordsAdded: entries.length };
-
-  } catch (error) {
-    console.error(`[ERROR] Failed to sync ${log.dateRangeStr}:`, error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return { success: false, recordsAdded: 0, error: errorMessage };
-  }
-}
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+
   try {
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const url = new URL(req.url);
+    const force = url.searchParams.get("force") === "1";
+    const max = Math.max(1, Math.min(5, Number(url.searchParams.get("max") || 3)));
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    console.log('[SYNC] Starting daily police logs sync...');
+    const logs = await discoverLogs();
+    if (!logs.length) return json({ success: true, message: "No logs listed on source", discovered: 0 });
 
-    // Discover available logs
-    const allLogs = await discoverAvailableLogs();
+    const { data: done } = await supabase.from("police_logs_sync_status").select("source_url").eq("status", "success");
+    const doneSet = new Set((done || []).map((d: any) => d.source_url));
+    const todo = logs.filter((l) => force || !doneSet.has(l.pdfUrl)).slice(0, max);
 
-    if (allLogs.length === 0) {
-      return new Response(JSON.stringify({ success: true, message: 'No logs found' }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Find unsynced logs
-    const unsyncedLogs = await findUnsyncedLogs(supabase, allLogs);
-
-    if (unsyncedLogs.length === 0) {
-      console.log('[SUCCESS] All logs are already synced!');
-      return new Response(JSON.stringify({ success: true, message: 'All logs already synced' }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log(`[SYNC] Syncing ${unsyncedLogs.length} unsynced logs...`);
-
-    let totalRecords = 0;
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const log of unsyncedLogs) {
-      const result = await syncDiscoveredLog(supabase, log);
-      if (result.success) {
-        totalRecords += result.recordsAdded;
-        successCount++;
-      } else {
-        failCount++;
+    const results: any[] = [];
+    for (const log of todo) {
+      try {
+        const md = await fetchMarkdown(log.pdfUrl);
+        const entries = parseEntries(md, log.pdfUrl);
+        for (let i = 0; i < entries.length; i += 500) {
+          const { error } = await supabase.from("police_logs").upsert(entries.slice(i, i + 500), { onConflict: "call_number" });
+          if (error) throw error;
+        }
+        const dates = entries.map((e) => e.log_date).sort();
+        await supabase.from("police_logs_sync_status").upsert({
+          sync_date: log.startDate || dates[0] || new Date().toISOString().slice(0, 10),
+          status: "success",
+          records_added: entries.length,
+          source_url: log.pdfUrl,
+          synced_at: new Date().toISOString(),
+        }, { onConflict: "sync_date" });
+        results.push({ log: log.title, records: entries.length, from: dates[0], to: dates[dates.length - 1] });
+      } catch (e) {
+        results.push({ log: log.title, error: e instanceof Error ? e.message : String(e) });
       }
-
-      // Small delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    console.log(`[SUCCESS] Sync complete! Success: ${successCount}, Failed: ${failCount}, Total records: ${totalRecords}`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      logsSynced: successCount,
-      logsFailed: failCount,
-      totalRecords
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
-    console.error('[ERROR] Main error:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    return new Response(JSON.stringify({
-      success: false,
-      error: errorMessage,
-      stack: errorStack
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ success: true, discovered: logs.length, processed: results.length, remaining: logs.filter((l) => !doneSet.has(l.pdfUrl)).length - results.filter((r) => !r.error).length, results });
+  } catch (e) {
+    return json({ success: false, error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
