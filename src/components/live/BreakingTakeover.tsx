@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Bus, CloudSun, Megaphone, ShieldCheck, TrainFront } from "lucide-react";
+import { ArrowUpRight, Bus, CloudSun, Megaphone, ShieldCheck, TrainFront, X } from "lucide-react";
 import { usePulse } from "@/lib/usePulse";
 import { openPulse } from "@/components/LiveTicker";
 import type { PulseItem } from "@/lib/cityApi";
@@ -11,11 +11,13 @@ import { cn } from "@/lib/utils";
 // a breaking item if there is one, otherwise a current alert, otherwise the latest news from the live feed.
 const SHOWN = "revere.takeover.session"; // read by LiveToasts so the same item isn't toasted again
 const OPEN_DELAY = 3000;
-const HOLD = { breaking: 11000, alert: 9500, info: 8000 } as const;
+// How long the story stays readable once it has appeared, before it sweeps away.
+const HOLD = { breaking: 3500, alert: 3000, info: 3000 } as const;
 const EASE = [0.76, 0, 0.24, 1] as const;
 const SOFT = [0.22, 1, 0.36, 1] as const;
 const IN = 1.7;   // seconds for the bands to sweep in
 const OUT = 1.25; // seconds for them to sweep out
+const CONTENT_AT = IN * 0.78; // the headline starts while the last band settles
 
 const remember = (id: string) => {
   try {
@@ -67,7 +69,7 @@ export default function BreakingTakeover() {
 
   useEffect(() => {
     if (!active) return;
-    const t = setTimeout(close, HOLD[active.level] ?? HOLD.info);
+    const t = setTimeout(close, CONTENT_AT * 1000 + 900 + (HOLD[active.level] ?? HOLD.info));
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => { clearTimeout(t); window.removeEventListener("keydown", onKey); };
@@ -107,7 +109,8 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
     );
   }
 
-  const contentAt = IN * 0.78; // the headline starts while the last band settles
+  const contentAt = CONTENT_AT;
+  const narrow = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
     <motion.div role="alertdialog" aria-modal="true" aria-label={`${word}: ${item.text}`} onClick={onClose}
@@ -123,7 +126,7 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
           }} />
       ))}
 
-      {/* 2. The field: slow aurora light, a fine grain and an outlined word drifting far behind */}
+      {/* 2. The field: slow aurora light, a fine grain and Paul Revere riding in behind the story */}
       <motion.div className="pointer-events-none absolute inset-0 z-[6]" aria-hidden
         variants={{ in: { opacity: 0 }, hold: { opacity: 1, transition: { delay: IN * 0.6, duration: 1.2 } }, out: { opacity: 0, transition: { duration: 0.6 } } }}>
         <motion.div className="absolute -left-[15%] -top-[20%] h-[85vmin] w-[85vmin] rounded-full bg-[#0297DE]/25 blur-[110px]"
@@ -132,11 +135,20 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
           animate={{ x: [0, -50, 0], y: [0, -30, 0] }} transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(2,7,10,0.35)_100%)]" />
         <div className="absolute inset-0 opacity-[0.03] [background-image:radial-gradient(rgba(255,255,255,0.9)_0.6px,transparent_0.6px)] [background-size:4px_4px]" />
-        <div className="absolute bottom-[4%] left-0 flex whitespace-nowrap font-serif-display text-[26vh] leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.09)]">
-          <motion.div className="flex" animate={{ x: ["0%", "-50%"] }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }}>
-            {Array.from({ length: 6 }).map((_, i) => <span key={i} className="pr-[6vw]">{item.level === "breaking" ? "Breaking news" : "Revere right now"}</span>)}
-          </motion.div>
-        </div>
+        {/* Paul Revere gallops across behind the story, in faint cantaloupe light, with a soft trail */}
+        <motion.div className="absolute bottom-[3%] left-0 flex h-[38vh] items-center md:bottom-[2%] md:h-[60vh]"
+          initial={{ x: narrow ? "-125vw" : "-75vw" }}
+          animate={{ x: narrow ? "70vw" : "105vw", transition: { delay: IN * 0.35, duration: narrow ? 5.6 : 7.5, ease: narrow ? "linear" : [0.3, 0.1, 0.4, 1] } }}>
+          <div className="h-[18%] w-[45vw] rounded-full bg-gradient-to-r from-transparent via-[#FC734D]/10 to-[#FC734D]/25 blur-2xl" />
+          <motion.div className="-ml-[6vw] aspect-square h-full opacity-60 md:opacity-100"
+            animate={{ y: [0, -14, 0], rotate: [-1.5, 1.5, -1.5] }} transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
+            style={{
+              background: "linear-gradient(100deg, rgba(252,115,77,0.18) 0%, rgba(252,115,77,0.42) 100%)",
+              WebkitMaskImage: "url(/logo-rider.png)", maskImage: "url(/logo-rider.png)",
+              WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center", maskPosition: "center",
+            }} />
+        </motion.div>
       </motion.div>
 
       {/* 3. The story */}
@@ -148,7 +160,7 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
       {/* 4. Time left, as a hairline */}
       <motion.div className="absolute bottom-0 left-0 z-[8] h-[3px] w-full origin-left bg-[#FC734D]"
         initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: hold / 1000 - contentAt, delay: contentAt, ease: "linear" }} />
+        transition={{ duration: 0.9 + hold / 1000, delay: contentAt, ease: "linear" }} />
     </motion.div>
   );
 }
@@ -166,9 +178,16 @@ function Content({ item, time, word, Icon, onClose, onOpen, reduce, start = 0 }:
           <span className="font-medium">{item.tag}</span>
         </span>
         <span className="text-white/60">{time}</span>
-        <span className="ml-auto hidden items-center gap-2 text-white/50 md:flex">
-          <span aria-hidden className="inline-block h-5 w-5 bg-white/60 [mask:url(/logo-rider.png)_center/contain_no-repeat] [-webkit-mask:url(/logo-rider.png)_center/contain_no-repeat]" />
-          Revere.City
+        <span className="ml-auto flex items-center gap-3">
+          <span className="hidden items-center gap-2 text-white/50 md:flex">
+            <span aria-hidden className="inline-block h-5 w-5 bg-white/60 [mask:url(/logo-rider.png)_center/contain_no-repeat] [-webkit-mask:url(/logo-rider.png)_center/contain_no-repeat]" />
+            Revere.City
+          </span>
+          {/* Icon-only close: tapping anywhere also closes it */}
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/[0.08] text-white/80 ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/15 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
         </span>
       </motion.div>
 
@@ -186,22 +205,19 @@ function Content({ item, time, word, Icon, onClose, onOpen, reduce, start = 0 }:
       <motion.div className="mt-6 h-px w-full max-w-[900px] origin-left bg-gradient-to-r from-white/50 via-white/20 to-transparent"
         initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: start + 0.6, duration: 1.2, ease: SOFT }} />
 
-      <motion.p {...rise(0.75)} className="mt-6 max-w-[900px] text-balance text-[clamp(24px,3.1vw,44px)] font-medium leading-[1.18] tracking-[-0.015em]">
-        {item.text}
-      </motion.p>
-
-      <motion.div {...rise(1.0)} className="mt-10 flex flex-wrap items-center gap-3">
-        {item.href && (
-          <button onClick={(e) => { e.stopPropagation(); onOpen(); }} autoFocus
-            className="h-12 rounded-full bg-white px-6 text-[16px] font-semibold text-[#02070A] shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-transform hover:-translate-y-0.5 active:scale-[0.97]">
-            {item.level === "info" ? "Read more" : "See what this means"}
+      {/* The headline is the link: tap it (or the arrow) for the full story */}
+      <motion.div {...rise(0.75)} className="mt-6 max-w-[920px]">
+        {item.href ? (
+          <button onClick={(e) => { e.stopPropagation(); onOpen(); }} autoFocus aria-label={`${item.text}. Open the full story`}
+            className="group text-left text-balance text-[clamp(24px,3.1vw,44px)] font-medium leading-[1.18] tracking-[-0.015em] outline-none">
+            {item.text}
+            <span aria-hidden className="ml-3 inline-grid h-[1.1em] w-[1.1em] translate-y-[0.12em] place-items-center rounded-full bg-[#FC734D] align-baseline text-[#02070A] transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-0 group-focus-visible:ring-2 group-focus-visible:ring-white">
+              <ArrowUpRight className="h-[0.62em] w-[0.62em]" strokeWidth={2.6} />
+            </span>
           </button>
+        ) : (
+          <p className="text-balance text-[clamp(24px,3.1vw,44px)] font-medium leading-[1.18] tracking-[-0.015em]">{item.text}</p>
         )}
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="h-12 rounded-full px-6 text-[16px] font-medium text-white/90 ring-1 ring-inset ring-white/35 backdrop-blur-sm transition-colors hover:bg-white/10">
-          Close
-        </button>
-        <span className="ml-1 text-[13px] text-white/45">or tap anywhere</span>
       </motion.div>
     </div>
   );
