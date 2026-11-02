@@ -14,7 +14,7 @@ const PAGES: Record<string, { kicker: string; title: string; accent: string; tex
   "/education": { kicker: "Revere Public Schools", title: "Revere's", accent: "schools", text: "Enrollment, outcomes and the district's budget." },
   "/health": { kicker: "Census Bureau · CDC PLACES", title: "Keeping Revere", accent: "healthy", text: "Who has health insurance, who goes without, and how Revere adults are doing on checkups, chronic conditions and everyday needs." },
   "/transportation": { kicker: "Census Bureau · American Community Survey", title: "Getting to", accent: "work", text: "How Revere residents commute, how long it takes and how that compares with the rest of Massachusetts." },
-  "/crime": { kicker: "Public safety", title: "Staying", accent: "safe", text: "Safety measures for Revere. For what happened this week, see the police log." },
+  "/crime": { kicker: "Revere PD public log · calls, not confirmed crimes", title: "Is Revere getting", accent: "safer", text: "How police calls are changing, what they were about, and which kinds are rising or falling, from the department's own log." },
   "/analytics": { kicker: "Site", title: "Visitor", accent: "analytics", text: "How people use Revere.City." },
 };
 
