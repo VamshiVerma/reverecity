@@ -2,7 +2,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import AlertSystem from "./AlertSystem";
+import LiveTicker from "./LiveTicker";
 import VisitorTracker from "./VisitorTracker";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -41,9 +41,11 @@ const DashboardLayout = ({ children, pageTitle }: DashboardLayoutProps) => {
     <div className="flex min-h-screen w-full bg-dark-bg">
       <VisitorTracker />
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-      <div className="flex flex-col flex-1 min-h-screen">
-        <Header toggleSidebar={toggleSidebar} pageTitle={pageTitle} />
-        <AlertSystem />
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <div className="sticky top-0 z-30">
+          <Header toggleSidebar={toggleSidebar} pageTitle={pageTitle} />
+          <LiveTicker />
+        </div>
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <div key={pageTitle} className="mx-auto w-full max-w-7xl animate-rise space-y-6">
             {children}

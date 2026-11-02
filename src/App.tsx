@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ConversationProvider } from "@/contexts/ConversationContext";
-import { EnhancedRealtimeChatBot } from "@/components/ChatBot/EnhancedRealtimeChatBot";
+import Assistant from "@/components/assistant/Assistant";
 import Index from "./pages/Index";
 import HousingPage from "./pages/HousingPage";
 import BudgetPage from "./pages/BudgetPage";
@@ -22,8 +22,6 @@ import EducationPage from "./pages/EducationPage";
 import MBTAPage from "./pages/MBTAPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import PoliceLogsPage from "./pages/PoliceLogsPage";
-import EmbedBudget from "./pages/EmbedBudget";
-import TestVectorSearch from "./pages/TestVectorSearch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,13 +50,11 @@ const App = () => (
                 <Route path="/transportation" element={<TransportationPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/police-logs" element={<PoliceLogsPage />} />
-                <Route path="/embed-budget" element={<EmbedBudget />} />
-                <Route path="/test-vector" element={<TestVectorSearch />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
 
               {/* Enhanced Real-time ChatBot - Available on all pages */}
-              <EnhancedRealtimeChatBot />
+              <Assistant />
 
             </BrowserRouter>
           </ConversationProvider>

@@ -22,9 +22,10 @@ function intents(q: string) {
   const s = q.toLowerCase();
   const has = (re: RegExp) => re.test(s);
   return {
-    police: has(/police|crime|safe|safety|incident|call|arrest|theft|stolen|break.?in|disturb|noise|fight|shots?|domestic|accident|crash|happen|going on|activity|suspicious|neighbou?rhood|my (block|street|area)/),
+    police: has(/crime|safe|safety|incident|calls?\b|arrest|theft|stolen|break.?in|disturb|noise|fight|shots?|domestic|accident|crash|happen|going on|activity|suspicious|neighbou?rhood|my (block|street|area)|police (log|activity|calls?|report)/)
+      || (has(/police|cops?/) && !has(/budget|spend|cost|money|fund|salar|payroll|fy ?2?0?2[0-9]|million|\$|department budget/)),
     budget: has(/budget|spend|spent|cost|money|fund|tax|revenue|salar|payroll|department|appropriat|fiscal|fy ?2?0?2[0-9]|million|dollar|\$|school|dpw|public works|pension|debt|capital|levy|ftes?|staff|employees|positions/),
-    weather: has(/weather|temperature|rain|snow|wind|cold|hot|forecast|storm|umbrella|sunny|degrees|alert|warning|flood/),
+    weather: has(/weather|temperature|rain|snow|wind|cold|hot|forecast|storm|umbrella|sunny|degrees|alert|warning|flood/) && !has(/budget|spend|cost|money|fund|removal|plow|fy ?2?0?2[0-9]|\$/),
     mbta: has(/mbta|\bt\b|train|blue line|subway|transit|commute|wonderland|revere beach station|beachmont|suffolk downs|bus|delay|shuttle/),
   };
 }
@@ -49,7 +50,7 @@ function streetsInQuestion(q: string, streets: string[]): string[] {
   for (const [k, v] of Object.entries(ALIASES)) if (u.includes(` ${k} `) || u.includes(`${k} `)) v.forEach((x) => hits.add(x));
   for (const s of streets) {
     const core = s.split(" + ")[0].replace(/\b(ST|AVE|RD|BLVD|PKWY|HWY|DR|LN|PL|CT|TER|WAY|SQ|CIR)\b\.?$/, "").trim();
-    if (core.length >= 5 && u.includes(` ${core} `)) hits.add(s.split(" + ")[0]);
+    if (core.length >= 5 && !/^(REVERE|NORTH|SOUTH|EAST|WEST|CENTRAL|MAIN)$/.test(core) && u.includes(` ${core} `)) hits.add(s.split(" + ")[0]);
   }
   return [...hits].slice(0, 8);
 }
@@ -82,6 +83,29 @@ async function policeContext(q: string) {
 }
 
 // ---------- budget ----------
+const DEPT_KEYS: [RegExp, RegExp][] = [
+  [/police|cops?/i, /^Police Department/i], [/fire( dept| department)?\b|firefight/i, /^Fire Department/i],
+  [/librar/i, /^Library/i], [/park|recreation|rec dept/i, /^Parks/i], [/snow|plow/i, /Snow & Ice/i],
+  [/water|sewer/i, /Water & Sewer/i], [/trash|garbage|solid waste|recycl/i, /Solid Waste/i], [/pension|retire/i, /^Retirement/i],
+  [/debt|bond|borrow/i, /^Debt Service/i], [/public works|dpw/i, /Public Works: (Administration|General Fund)/i],
+  [/public health|health dep/i, /Public Health/i], [/veteran/i, /Veterans/i], [/elder|senior/i, /Elder Affairs/i],
+  [/\bit\b|information tech|technology/i, /^Information Technology/i], [/city clerk|clerk/i, /^City Clerk/i],
+  [/city council|council/i, /^City Council/i], [/mayor/i, /^Mayor/i], [/311|constituent/i, /Constituent/i],
+  [/parking/i, /^Parking Control/i], [/assessor/i, /^Assessors/i], [/treasur|collector/i, /Collector/i],
+  [/solicitor|legal|lawyer/i, /Solicitor/i], [/election/i, /^Election/i], [/planning|community development/i, /Planning/i],
+  [/engineer/i, /^Engineering/i], [/inspection|isd/i, /Inspections/i], [/building commission/i, /Building Commissioner/i],
+  [/benefit|insurance|health insurance/i, /Employee Benefits/i], [/human resource|\bhr\b/i, /^Human Resources/i],
+  [/regional school|northeast metro|vocational/i, /Regional Schools/i], [/911|dispatch|emergency comm/i, /Emergency Communications/i],
+  [/wellness center/i, /Wellness Center/i], [/purchas|procure/i, /^Purchasing/i], [/accounting|audit/i, /Accounting/i],
+];
+async function departmentFigures(q: string) {
+  const wanted = DEPT_KEYS.filter(([k]) => k.test(q)).map(([, n]) => n);
+  if (!wanted.length) return [];
+  const { data } = await supabase.from("budget_departments").select("*").order("fiscal_year", { ascending: false });
+  return (data || []).filter((r: any) => wanted.some((n) => n.test(r.name)));
+}
+const money = (v: number | null) => v == null ? "—" : "$" + Math.round(v).toLocaleString("en-US");
+
 async function budgetContext(q: string) {
   const emb = await embedder.run(q, { mean_pool: true, normalize: true });
   const ftsQuery = q.replace(/[^\w\s$.]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !/^(the|and|for|how|much|what|does|city|revere|spend|spending|on|is|are|was)$/i.test(w)).join(" or ");
@@ -89,7 +113,8 @@ async function budgetContext(q: string) {
     query_embedding: Array.from(emb as number[]), query_text: ftsQuery || q, match_count: 7, doc_filter: null,
   });
   if (error) throw error;
-  return (data || []) as any[];
+  const wantsPeople = /salar|employee|who |staff|position|officer|chief|pay (for|of)|paid/i.test(q);
+  return ((data || []) as any[]).filter((c) => wantsPeople || !/Employee Listing/i.test(c.content));
 }
 
 // ---------- weather ----------
@@ -199,11 +224,12 @@ Deno.serve(async (req) => {
     let it = intents(q);
     if (!it.police && !it.budget && !it.weather && !it.mbta) it = { police: false, budget: true, weather: false, mbta: false }; // documents are the default knowledge base
 
-    const [police, budget, weather, mbta] = await Promise.all([
+    const [police, budget, weather, mbta, depts] = await Promise.all([
       it.police ? policeContext(q) : null,
       it.budget ? budgetContext(q).catch(() => []) : null,
       it.weather ? weatherContext() : null,
       it.mbta ? mbtaContext() : null,
+      it.budget ? departmentFigures(q).catch(() => []) : [],
     ]);
 
     const sources: Source[] = [];
@@ -217,8 +243,20 @@ By type: ${police.byCat.map(([k, v]) => `${pretty(k)} ${v}`).join("; ")}.
 Busiest streets: ${police.byStreet.map(([k, v]) => `${title(k)} ${v}`).join("; ")}.
 Busiest hours: ${police.byHour.map(([k, v]) => `${k}:00 (${v})`).join(", ")}.
 Notable calls: ${police.notable.map((r) => `${fmtDate(r.log_date)} ${r.time_24h} ${title(r.call_reason)} → ${title(r.action)}${r.location_street ? " @ " + title(r.location_street) : ""}`).join(" | ")}`);
-      police.sourceUrls.forEach((u: string) => sources.push({ kind: "police", label: "Revere PD public log", detail: `through ${fmtDate(police.latestDate)}`, url: u }));
+      police.sourceUrls.forEach((u: string) => {
+        const f = decodeURIComponent(u.split("/").pop() || "");
+        const m = f.match(/^(\d{2})-(\d{2})[^]*?-to-(\d{2})-(\d{2})/);
+        const mon = (n: string) => new Date(2000, Number(n) - 1, 1).toLocaleDateString("en-US", { month: "short" });
+        const detail = m ? `${mon(m[1])} ${Number(m[2])}–${m[3] === m[1] ? "" : mon(m[3]) + " "}${Number(m[4])} log` : `through ${fmtDate(police.latestDate)}`;
+        sources.push({ kind: "police", label: "Revere PD public log", detail, url: u });
+      });
       cards.push({ type: "police", latestDate: police.latestDate, since: police.since, total: police.total, streets: police.streets, byCat: police.byCat.slice(0, 5) });
+    }
+    if (depts && depts.length) {
+      ctx.push(`BUDGET DEPARTMENT TOTALS (structured, from the adopted budget books):\n${depts.map((d: any) =>
+        `${d.doc_title} p. ${d.page}: ${d.name} — FY${d.fiscal_year} budget ${money(d.recommended)} (payroll ${money(d.payroll)}, non-payroll ${money(d.non_payroll)}); prior year adopted ${money(d.prior_adopted)}; department requested ${money(d.dept_request)}`).join("\n")}`);
+      for (const d of depts) sources.push({ kind: "budget", label: d.doc_title, detail: `p. ${d.page} · ${d.name}`, url: `${d.source_url}#page=${d.page}` });
+      cards.push({ type: "budget", rows: depts.map((d: any) => ({ name: d.name, fy: d.fiscal_year, amount: d.recommended, prior: d.prior_adopted, payroll: d.payroll, nonPayroll: d.non_payroll, page: d.page, doc: d.doc_title })) });
     }
     if (budget && budget.length) {
       ctx.push(`BUDGET DOCUMENT EXCERPTS:\n${budget.map((c: any) => `[${c.doc_title}, p. ${c.page}${c.section ? " — " + c.section : ""}]\n${c.content}`).join("\n---\n")}`);
@@ -245,6 +283,9 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       cards.push({ type: "mbta", alerts: mbta.alerts.slice(0, 4), preds: mbta.preds.slice(0, 6) });
     }
 
+    const seenSrc = new Set<string>();
+    const uniqSources = sources.filter((x) => { const k = x.label + "|" + (x.detail ?? "") + "|" + (x.url ?? ""); if (seenSrc.has(k)) return false; seenSrc.add(k); return true; }).slice(0, 8);
+    sources.length = 0; sources.push(...uniqSources);
     const context = ctx.join("\n\n") || "No matching city data was found.";
     const gen = await llm(context, q, Array.isArray(history) ? history : []);
 
@@ -269,7 +310,16 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
         const nb = mbta.preds.filter((p: any) => p.station === "Revere Beach").slice(0, 3);
         if (nb.length) parts.push(`- Revere Beach: ${nb.map((p: any) => `${p.toward} in ${p.mins} min`).join(" · ")}`);
       }
-      if (budget && budget.length) {
+      const byName = new Map<string, any[]>();
+      for (const d of depts || []) byName.set(d.name, [...(byName.get(d.name) || []), d]);
+      for (const [name, rows] of byName) {
+        const cur = rows.find((r: any) => r.fiscal_year === 2027) ?? rows[0];
+        const pct = cur.prior_adopted ? ((cur.recommended - cur.prior_adopted) / cur.prior_adopted) * 100 : null;
+        parts.push(`**${name} — FY${cur.fiscal_year} budget: ${money(cur.recommended)}**${pct != null ? ` (${Math.abs(pct) < 0.05 ? `unchanged from FY${cur.fiscal_year - 1}` : `${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% from ${money(cur.prior_adopted)} in FY${cur.fiscal_year - 1}`})` : ""}.`);
+        if (cur.payroll != null) parts.push(`- Payroll ${money(cur.payroll)} · other expenses ${money(cur.non_payroll)}`);
+        parts.push(`- Source: *${cur.doc_title}, p. ${cur.page}*`);
+      }
+      if (budget && budget.length && !(depts && depts.length)) {
         parts.push(`**From the city budget documents** — the most relevant passages:`);
         budget.slice(0, 3).forEach((c: any) => {
           const snippet = c.content.split("\n").filter((l: string) => /\d/.test(l)).slice(0, 4).join("\n") || c.content.slice(0, 300);

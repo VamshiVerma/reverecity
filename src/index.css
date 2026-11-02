@@ -242,3 +242,46 @@ div[role="status"][data-sonner-toast] {
   background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.06), transparent);
   animation: shimmer 1.6s infinite;
 }
+
+/* Broadcast ticker crawl */
+@keyframes ticker-crawl {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+.ticker-track { animation: ticker-crawl linear infinite; will-change: transform; }
+
+/* Assistant orb */
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+@keyframes orb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.orb {
+  position: relative;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, hsl(199 95% 62%), hsl(220 90% 60%), hsl(24 94% 62%), hsl(190 90% 55%), hsl(199 95% 62%));
+  animation: orb-spin 6s linear infinite;
+}
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, hsl(0 0% 100% / 0.9), hsl(199 90% 70% / 0.35) 35%, hsl(222 50% 10% / 0.2) 70%);
+  filter: blur(0.5px);
+}
+.orb-busy { animation: orb-spin 1.4s linear infinite, orb-breathe 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .orb, .orb-busy, .ticker-track { animation: none !important; }
+}
+
+/* Assistant answer typography */
+.prose-revere > * + * { margin-top: 0.6em; }
+.prose-revere p { margin: 0; }
+.prose-revere strong { color: hsl(var(--foreground)); font-weight: 600; }
+.prose-revere ul, .prose-revere ol { padding-left: 1.1em; }
+.prose-revere ul { list-style: none; }
+.prose-revere ul > li { position: relative; margin-top: 0.3em; }
+.prose-revere ul > li::before { content: ""; position: absolute; left: -0.9em; top: 0.62em; height: 5px; width: 5px; border-radius: 9999px; background: hsl(var(--primary)); }
+.prose-revere ol { list-style: decimal; }
+.prose-revere blockquote { border-left: 2px solid hsl(var(--primary) / 0.5); padding: 0.4em 0 0.4em 0.8em; color: hsl(var(--muted-foreground)); font-size: 0.86em; white-space: pre-wrap; background: hsl(0 0% 100% / 0.02); border-radius: 0 8px 8px 0; }
+.prose-revere em { color: hsl(var(--foreground) / 0.85); }
+.prose-revere a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }
+.prose-revere code { font-family: "JetBrains Mono", monospace; font-size: 0.85em; background: hsl(0 0% 100% / 0.06); padding: 0.1em 0.35em; border-radius: 6px; }
