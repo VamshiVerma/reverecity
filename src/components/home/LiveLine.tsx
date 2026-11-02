@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // The Blue Line from Wonderland (north end, in Revere) toward downtown Boston.
@@ -18,18 +18,18 @@ const N = LINE.length;
 const IDX = Object.fromEntries(LINE.map((s, i) => [s.id, i]));
 const STORE = "revere.station";
 const MBTA = "https://api-v3.mbta.com";
-const ROW = 56; // px per station on the vertical (phone) map
+const HOP_SEC = 110; // typical seconds between neighbouring stations
+const ROW = 56;      // px per station on the vertical (phone) map
 
 export type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
-type Train = { id: string; dir: 0 | 1; pos: number; stopped: boolean; at: string };
-type Dep = { at: number; scheduled: boolean };
+type Vehicle = { id: string; trip: string; dir: 0 | 1; idx: number; stopped: boolean; eta: number | null };
+type Dep = { at: number; scheduled: boolean; trip?: string };
 
-function useNow() {
+function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), ms); return () => clearInterval(id); }, [ms]);
   return now;
 }
-
 function useNarrow() {
   const q = "(max-width: 767px)";
   const [n, setN] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches);
@@ -38,7 +38,7 @@ function useNarrow() {
 }
 
 function useLive(stationId: string) {
-  const [trains, setTrains] = useState<Train[] | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [deps, setDeps] = useState<{ 0: Dep[]; 1: Dep[] } | null>(null);
   const [asOf, setAsOf] = useState<Date | null>(null);
 
@@ -49,46 +49,53 @@ function useLive(stationId: string) {
       try {
         const [v, p] = await Promise.all([
           fetch(`${MBTA}/vehicles?filter%5Broute%5D=Blue&include=stop`).then((r) => r.json()),
-          fetch(`${MBTA}/predictions?filter%5Bstop%5D=${stationId}&filter%5Broute%5D=Blue&sort=departure_time&page%5Blimit%5D=12`).then((r) => r.json()),
+          fetch(`${MBTA}/predictions?filter%5Broute%5D=Blue&include=stop&page%5Blimit%5D=250`).then((r) => r.json()),
         ]);
         const parent: Record<string, string> = {};
-        for (const s of v.included || []) parent[s.id] = s.relationships?.parent_station?.data?.id || s.id;
-        const out: Train[] = [];
-        for (const t of v.data || []) {
-          const sid = t.relationships?.stop?.data?.id;
-          const i = sid != null ? IDX[parent[sid]] : undefined;
-          if (i == null) continue;
-          const dir = t.attributes.direction_id as 0 | 1, st = t.attributes.current_status as string;
-          // Direction 0 runs from Wonderland toward Boston (increasing index).
-          const back = st === "STOPPED_AT" ? 0 : st === "INCOMING_AT" ? 0.25 : 0.55;
-          out.push({ id: t.id, dir, stopped: st === "STOPPED_AT", at: LINE[i].name, pos: Math.max(0, Math.min(N - 1, dir === 0 ? i - back : i + back)) });
-        }
+        for (const s of [...(v.included || []), ...(p.included || [])]) parent[s.id] = s.relationships?.parent_station?.data?.id || s.id;
+        // trip -> parent stop -> arrival time
+        const eta: Record<string, Record<string, number>> = {};
+        const here: { 0: Dep[]; 1: Dep[] } = { 0: [], 1: [] };
         const now = Date.now();
-        const next: { 0: Dep[]; 1: Dep[] } = { 0: [], 1: [] };
         for (const q of p.data || []) {
-          const t = q.attributes.departure_time || q.attributes.arrival_time;
-          if (t && new Date(t).getTime() > now - 30_000) next[q.attributes.direction_id as 0 | 1].push({ at: new Date(t).getTime(), scheduled: false });
+          const trip = q.relationships?.trip?.data?.id, stop = parent[q.relationships?.stop?.data?.id];
+          const t = q.attributes.arrival_time || q.attributes.departure_time;
+          if (!trip || !stop || !t) continue;
+          const at = new Date(t).getTime();
+          (eta[trip] ||= {})[stop] = at;
+          if (stop === stationId && at > now - 30_000) {
+            const dep = q.attributes.departure_time ? new Date(q.attributes.departure_time).getTime() : at;
+            here[q.attributes.direction_id as 0 | 1].push({ at: dep, scheduled: false, trip });
+          }
         }
-        // The end of the line often has no live departure predictions yet: fall back to the timetable.
+        const out: Vehicle[] = [];
+        for (const x of v.data || []) {
+          const sid = x.relationships?.stop?.data?.id;
+          const stop = sid ? parent[sid] : undefined;
+          if (!stop || IDX[stop] == null) continue;
+          const trip = x.relationships?.trip?.data?.id || "";
+          out.push({ id: x.id, trip, dir: x.attributes.direction_id, idx: IDX[stop], stopped: x.attributes.current_status === "STOPPED_AT", eta: eta[trip]?.[stop] ?? null });
+        }
+        // End of the line often has no live departures yet: use the timetable, clearly labelled.
         for (const dir of [0, 1] as const) {
-          if (next[dir].length) continue;
+          if (here[dir].length) continue;
           const hhmm = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" });
           const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
           const s = await fetch(`${MBTA}/schedules?filter%5Bstop%5D=${stationId}&filter%5Broute%5D=Blue&filter%5Bdirection_id%5D=${dir}&filter%5Bdate%5D=${date}&filter%5Bmin_time%5D=${hhmm}&sort=departure_time&page%5Blimit%5D=3`).then((r) => r.json()).catch(() => ({ data: [] }));
-          for (const q of s.data || []) { const t = q.attributes.departure_time; if (t && new Date(t).getTime() > now) next[dir].push({ at: new Date(t).getTime(), scheduled: true }); }
+          for (const q of s.data || []) { const t = q.attributes.departure_time; if (t && new Date(t).getTime() > now) here[dir].push({ at: new Date(t).getTime(), scheduled: true }); }
         }
+        here[0].sort((a, b) => a.at - b.at); here[1].sort((a, b) => a.at - b.at);
         if (!alive) return;
-        setTrains(out);
-        next[0].sort((x, y) => x.at - y.at); next[1].sort((x, y) => x.at - y.at);
-        setDeps({ 0: next[0].slice(0, 3), 1: next[1].slice(0, 3) });
+        setVehicles(out);
+        setDeps({ 0: here[0].slice(0, 3), 1: here[1].slice(0, 3) });
         setAsOf(new Date());
-      } catch { if (alive) { setTrains((t) => t ?? []); setDeps((d) => d ?? { 0: [], 1: [] }); } }
+      } catch { if (alive) { setVehicles((t) => t ?? []); setDeps((d) => d ?? { 0: [], 1: [] }); } }
     };
     load();
-    const id = setInterval(load, 20_000);
+    const id = setInterval(load, 15_000);
     return () => { alive = false; clearInterval(id); };
   }, [stationId]);
-  return { trains, deps, asOf };
+  return { vehicles, deps, asOf };
 }
 
 const minsTo = (at: number, now: number) => Math.round((at - now) / 60_000);
@@ -96,15 +103,35 @@ const minsTo = (at: number, now: number) => Math.round((at - now) / 60_000);
 export default function LiveLine({ alert }: { stations?: Station[]; alert?: string }) {
   const [sel, setSel] = useState<string>(() => { try { return localStorage.getItem(STORE) || "place-rbmnl"; } catch { return "place-rbmnl"; } });
   useEffect(() => { try { localStorage.setItem(STORE, sel); } catch { /* ignore */ } }, [sel]);
-  const { trains, deps, asOf } = useLive(sel);
-  const now = useNow();
+  const { vehicles, deps, asOf } = useLive(sel);
+  const now = useNow(1000);
   const narrow = useNarrow();
-  const reduce = useReducedMotion();
   const si = IDX[sel];
   const station = LINE[si];
   const atEnd = si === 0;
-  const list = trains ?? [];
-  const spring = reduce ? { duration: 0 } : { type: "spring" as const, stiffness: 45, damping: 16 };
+
+  // Where each train is right now, recomputed every second from its predicted arrival at the next station.
+  const trains = useMemo(() => (vehicles || []).map((v) => {
+    let pos = v.idx;
+    if (!v.stopped) {
+      const left = v.eta != null ? Math.max(0, (v.eta - now) / 1000) : HOP_SEC * 0.5;
+      const frac = Math.min(1, left / HOP_SEC);
+      pos = v.dir === 0 ? v.idx - frac : v.idx + frac;
+    }
+    return { ...v, pos: Math.max(-0.15, Math.min(N - 1 + 0.15, pos)) };
+  }), [vehicles, now]);
+
+  // Which train is the next one into my station, each way, and how long until it arrives.
+  const nextTag = useMemo(() => {
+    const tag: Record<string, string> = {};
+    for (const dir of [0, 1] as const) {
+      const d = deps?.[dir]?.find((x) => !x.scheduled && x.at > now - 20_000);
+      if (!d?.trip) continue;
+      const v = trains.find((t) => t.trip === d.trip);
+      if (v) { const m = minsTo(d.at, now); tag[v.id] = m <= 0 ? "Boarding" : `${m} min`; }
+    }
+    return tag;
+  }, [deps, trains, now]);
 
   const Card = ({ dir }: { dir: 0 | 1 }) => {
     const ds = (deps?.[dir] ?? []).filter((d) => d.at > now - 30_000);
@@ -129,73 +156,81 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
     );
   };
 
-  const legend = (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-white/65">
-      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-highlight-secondary" />Heading to Boston</span>
-      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-white" />Heading to Revere</span>
-    </div>
-  );
+  const pill = (dir: 0 | 1) => cn("flex h-[20px] items-center gap-[3px] rounded-full px-[6px]",
+    dir === 0 ? "bg-highlight-secondary shadow-[0_0_18px_rgba(252,115,77,0.55)]" : "bg-white shadow-[0_0_14px_rgba(255,255,255,0.45)]");
+  const windows = (dir: 0 | 1) => [0, 1, 2].map((w) => <span key={w} className={cn("h-[7px] w-[7px] rounded-[2px]", dir === 0 ? "bg-[#2a0d04]/70" : "bg-[#04121c]/60")} />);
+  const tagCls = (dir: 0 | 1) => cn("figure whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-semibold tracking-[-0.01em]", dir === 0 ? "bg-highlight-secondary text-[#2a0d04]" : "bg-white text-[#04121c]");
 
-  const trainChip = (t: Train) => cn("grid h-[22px] w-[22px] place-items-center rounded-[7px] text-[11px] font-bold",
-    t.dir === 0 ? "bg-highlight-secondary text-[#2a0d04] shadow-[0_0_14px_rgba(252,115,77,0.6)]" : "bg-white text-[#04121c] shadow-[0_0_12px_rgba(255,255,255,0.5)]");
-
-  /* ---------- desktop: the line laid out left to right, Wonderland first ---------- */
+  /* ---------- desktop: one line, left to right; Boston-bound above, Revere-bound below ---------- */
   const horizontal = (
-    <div className="rounded-[22px] bg-black/25 px-6 pb-5 pt-4 ring-1 ring-white/10">
-      <div className="flex items-center justify-between">{legend}<span className="text-[12px] text-white/50">Continues to Aquarium, State, Gov't Center, Bowdoin →</span></div>
-      <div className="relative mx-8 mt-4 h-[118px]">
-        {/* Revere stretch */}
-        <div className="absolute top-0 h-[86px] rounded-2xl bg-white/[0.05]" style={{ left: "-20px", width: `calc(${(3 / (N - 1)) * 100}% + 40px)` }} aria-hidden />
-        <span className="absolute -top-0.5 left-[-12px] text-[11.5px] text-white/50">Revere</span>
-        {/* lanes */}
-        <div className="absolute left-0 right-0 top-[28px] h-[3px] rounded-full bg-highlight-secondary/40" />
-        <div className="absolute left-0 right-0 top-[58px] h-[3px] rounded-full bg-white/30" />
-        {LINE.map((s, i) => {
-          const mine = s.id === sel;
-          return (
-            <button key={s.id} onClick={() => s.revere && setSel(s.id)} disabled={!s.revere} className="absolute top-[18px] -translate-x-1/2 disabled:cursor-default" style={{ left: `${(i / (N - 1)) * 100}%` }} aria-label={s.name}>
-              <span className={cn("mx-auto block h-[52px] w-[14px] rounded-full border-[3px] bg-[#04121c]", mine ? "border-highlight-secondary" : s.revere ? "border-white" : "border-white/40")} />
-              <span className={cn("absolute left-1/2 top-[60px] w-[96px] -translate-x-1/2 text-center text-[12.5px] leading-tight", mine ? "font-semibold text-highlight-secondary" : s.revere ? "font-medium text-white" : "text-white/50")}>{s.name}</span>
-            </button>
-          );
-        })}
-        {list.map((t) => (
-          <motion.span key={t.id} className={cn("absolute z-10 -translate-x-1/2", trainChip(t))} style={{ top: t.dir === 0 ? 18 : 48 }}
-            initial={false} animate={{ left: `${(t.pos / (N - 1)) * 100}%` }} transition={spring} title={`${t.dir === 0 ? "To Boston" : "To Wonderland"}, ${t.stopped ? "at" : "near"} ${t.at}`}>
-            {t.dir === 0 ? "→" : "←"}
-          </motion.span>
-        ))}
+    <div className="rounded-[22px] bg-black/25 px-6 pb-4 pt-4 ring-1 ring-white/10">
+      <div className="flex items-center justify-between text-[12.5px] text-white/60">
+        <span className="flex items-center gap-2"><span className="h-2.5 w-4 rounded-full bg-highlight-secondary" />Above the line: heading to Boston →</span>
+        <span className="flex items-center gap-2">← Below the line: heading to Revere<span className="h-2.5 w-4 rounded-full bg-white" /></span>
       </div>
-    </div>
-  );
-
-  /* ---------- phone: the same line top to bottom ---------- */
-  const vertical = (
-    <div className="rounded-[22px] bg-black/25 p-4 ring-1 ring-white/10">
-      {legend}
-      <div className="relative mt-4" style={{ height: (N - 1) * ROW + 28 }}>
-        <div className="absolute left-[20px] top-[14px] w-[3px] rounded-full bg-highlight-secondary/40" style={{ height: (N - 1) * ROW }} />
-        <div className="absolute left-[48px] top-[14px] w-[3px] rounded-full bg-white/30" style={{ height: (N - 1) * ROW }} />
+      <div className="relative mx-10 mt-3 h-[178px]">
+        {/* the line */}
+        <div className="absolute left-[-24px] right-[-24px] top-[70px] h-[6px] rounded-full bg-[#0297DE]" />
+        {/* Revere stretch */}
+        <div className="absolute top-[60px] h-[26px] rounded-full bg-white/[0.06]" style={{ left: "-14px", width: `calc(${(3 / (N - 1)) * 100}% + 28px)` }} aria-hidden />
         {LINE.map((s, i) => {
           const mine = s.id === sel;
           return (
             <button key={s.id} onClick={() => s.revere && setSel(s.id)} disabled={!s.revere}
-              className={cn("absolute inset-x-0 flex h-[28px] items-center rounded-full pl-[70px] pr-3 text-left disabled:cursor-default", mine && "bg-white/[0.10] ring-1 ring-highlight-secondary/60")}
+              className="absolute top-[62px] -translate-x-1/2 disabled:cursor-default" style={{ left: `${(i / (N - 1)) * 100}%` }} aria-label={s.name}>
+              <span className={cn("mx-auto block rounded-full border-[4px] bg-[#04121c]", mine ? "h-[22px] w-[22px] border-highlight-secondary" : s.revere ? "h-[22px] w-[22px] border-white" : "h-[18px] w-[18px] border-white/45")} />
+              <span className={cn("absolute left-1/2 top-[68px] w-[104px] -translate-x-1/2 text-center text-[13px] leading-tight", mine ? "font-semibold text-highlight-secondary" : s.revere ? "font-medium text-white" : "text-white/50")}>
+                {s.name}{mine && <span className="mt-0.5 block text-[11.5px] font-normal text-white/60">Your station</span>}
+              </span>
+            </button>
+          );
+        })}
+        {trains.map((t) => (
+          <div key={t.id} className="absolute z-10 -translate-x-1/2 transition-[left] duration-1000 ease-linear motion-reduce:transition-none"
+            style={{ left: `${(t.pos / (N - 1)) * 100}%`, top: t.dir === 0 ? 34 : 98 }}>
+            <div className={cn(pill(t.dir), t.dir === 1 && "flex-row-reverse")}>
+              {windows(t.dir)}<span className={cn("text-[10px] font-black", t.dir === 0 ? "text-[#2a0d04]" : "text-[#04121c]")}>{t.dir === 0 ? "›" : "‹"}</span>
+            </div>
+            {nextTag[t.id] && <div className={cn("absolute", t.dir === 0 ? "-top-[24px] left-1/2 -translate-x-1/2" : "left-full top-1/2 ml-1.5 -translate-y-1/2", tagCls(t.dir))}>{nextTag[t.id]}</div>}
+          </div>
+        ))}
+      </div>
+      <p className="text-right text-[12px] text-white/45">Continues to Aquarium, State, Government Center and Bowdoin</p>
+    </div>
+  );
+
+  /* ---------- phone: the same line, top to bottom ---------- */
+  const vertical = (
+    <div className="rounded-[22px] bg-black/25 p-4 ring-1 ring-white/10">
+      <div className="flex justify-between text-[12px] text-white/60">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-highlight-secondary" />↓ to Boston</span>
+        <span className="flex items-center gap-1.5">to Revere ↑<span className="h-2.5 w-2.5 rounded-full bg-white" /></span>
+      </div>
+      <div className="relative mt-4" style={{ height: (N - 1) * ROW + 30 }}>
+        <div className="absolute left-[44px] top-[8px] w-[6px] rounded-full bg-[#0297DE]" style={{ height: (N - 1) * ROW + 12 }} />
+        {LINE.map((s, i) => {
+          const mine = s.id === sel;
+          return (
+            <button key={s.id} onClick={() => s.revere && setSel(s.id)} disabled={!s.revere}
+              className={cn("absolute inset-x-0 flex h-[28px] items-center rounded-full pl-[104px] pr-3 text-left disabled:cursor-default", mine && "bg-white/[0.10] ring-1 ring-highlight-secondary/60")}
               style={{ top: i * ROW }}>
-              <span className={cn("absolute left-[12px] top-1/2 h-[14px] w-[40px] -translate-y-1/2 rounded-full border-[3px] bg-[#04121c]", mine ? "border-highlight-secondary" : s.revere ? "border-white" : "border-white/40")} />
+              <span className={cn("absolute left-[47px] top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-[4px] bg-[#04121c]", mine ? "h-[20px] w-[20px] border-highlight-secondary" : s.revere ? "h-[20px] w-[20px] border-white" : "h-[16px] w-[16px] border-white/45")} />
               <span className={cn("truncate text-[14.5px]", mine ? "font-semibold text-highlight-secondary" : s.revere ? "font-medium text-white" : "text-white/50")}>{s.name}</span>
               {mine && <span className="ml-auto shrink-0 text-[12px] text-white/70">Your station</span>}
             </button>
           );
         })}
-        {list.map((t) => (
-          <motion.span key={t.id} className={cn("absolute z-10 -translate-x-1/2", trainChip(t))} style={{ left: t.dir === 0 ? 21.5 : 49.5 }}
-            initial={false} animate={{ top: t.pos * ROW + 3 }} transition={spring}>
-            {t.dir === 0 ? "↓" : "↑"}
-          </motion.span>
+        {trains.map((t) => (
+          <div key={t.id} className="absolute z-10 -translate-y-1/2 transition-[top] duration-1000 ease-linear motion-reduce:transition-none"
+            style={{ top: t.pos * ROW + 14, left: t.dir === 0 ? 8 : 62 }}>
+            <div className={cn(pill(t.dir), "h-[18px] w-[28px] justify-center")}>
+              <span className={cn("text-[10px] font-black", t.dir === 0 ? "text-[#2a0d04]" : "text-[#04121c]")}>{t.dir === 0 ? "↓" : "↑"}</span>
+            </div>
+            
+          </div>
         ))}
       </div>
-      <p className="mt-1 text-[12px] text-white/50">Continues to Aquarium, State, Gov't Center, Bowdoin.</p>
+      <p className="mt-1 text-[12px] text-white/45">Continues to Aquarium, State, Government Center and Bowdoin</p>
     </div>
   );
 
