@@ -9,13 +9,37 @@ const cors = {
 };
 const KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 const hits = new Map<string, number[]>();
-function limited(ip: string, max = 40, windowMs = 10 * 60e3) {
+function limited(ip: string, max = 300, windowMs = 10 * 60e3) {
   const now = Date.now();
   const list = (hits.get(ip) ?? []).filter((t) => now - t < windowMs);
   list.push(now);
   hits.set(ip, list);
   return list.length > max;
 }
+// Spoken answers are cached in Storage, so a repeated answer never spends Groq's daily allowance again.
+const SB = Deno.env.get("SUPABASE_URL") ?? "";
+const SR = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const BUCKET = "tts-cache";
+async function sha(s: string) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const objUrl = (k: string) => `${SB}/storage/v1/object/${BUCKET}/${k}.wav`;
+async function cached(k: string) {
+  if (!SB || !SR) return null;
+  try {
+    const r = await fetch(objUrl(k), { headers: { Authorization: `Bearer ${SR}`, apikey: SR } });
+    return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+  } catch { return null; }
+}
+function store(k: string, buf: Uint8Array) {
+  if (!SB || !SR) return;
+  const p = fetch(objUrl(k), { method: "POST", headers: { Authorization: `Bearer ${SR}`, apikey: SR, "Content-Type": "audio/wav", "x-upsert": "true" }, body: buf }).catch(() => {});
+  // deno-lint-ignore no-explicit-any
+  (globalThis as any).EdgeRuntime?.waitUntil?.(p);
+}
+let remaining: string | null = null;
+
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 Deno.serve(async (req) => {
@@ -50,16 +74,23 @@ Deno.serve(async (req) => {
     const { text = "", voice = "hannah" } = await req.json().catch(() => ({}));
     const input = String(text).slice(0, 900).trim();
     if (!input) return json({ error: "empty text" }, 400);
+    const key = await sha(`orpheus|${voice}|${input}`);
+    const audioHeaders = { ...cors, "Content-Type": "audio/wav", "Cache-Control": "public, max-age=86400", "Access-Control-Expose-Headers": "x-tts-remaining, x-tts-cache" };
+    const hit = await cached(key);
+    if (hit) return new Response(hit, { headers: { ...audioHeaders, "x-tts-cache": "hit", ...(remaining ? { "x-tts-remaining": remaining } : {}) } });
     const r = await fetch("https://api.groq.com/openai/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "canopylabs/orpheus-v1-english", voice, input, response_format: "wav" }),
     });
+    remaining = r.headers.get("x-ratelimit-remaining-requests") ?? remaining;
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      return json({ error: e?.error?.code || "tts unavailable", fallback: true }, 409);
+      return json({ error: e?.error?.code || "tts unavailable", fallback: true, remaining: r.status === 429 ? "0" : remaining }, 409);
     }
-    return new Response(r.body, { headers: { ...cors, "Content-Type": "audio/wav", "Cache-Control": "no-store" } });
+    const buf = new Uint8Array(await r.arrayBuffer());
+    store(key, buf);
+    return new Response(buf, { headers: { ...audioHeaders, "x-tts-cache": "miss", ...(remaining ? { "x-tts-remaining": remaining } : {}) } });
   }
 
   return json({ error: "mode must be stt or tts" }, 400);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { NextHour, TrainStats, TrainsByHour } from "./TrainCharts";
 
 // The Blue Line from Wonderland (north end, in Revere) toward downtown Boston.
 const LINE = [
@@ -24,6 +25,8 @@ const ROW = 66;      // px per station on the vertical (phone) map
 export type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
 type Vehicle = { id: string; trip: string; dir: 0 | 1; idx: number; stopped: boolean; eta: number | null };
 type Dep = { at: number; scheduled: boolean; trip?: string };
+type Sched = { at: number; trip: string };
+type Pair<T> = { 0: T; 1: T };
 
 function useNow(ms = 1000) {
   const [now, setNow] = useState(Date.now());
@@ -37,14 +40,36 @@ function useNarrow() {
   return n;
 }
 
+// Today's full timetable at a station, both directions (fetched once per station per day).
+const dayCache = new Map<string, Promise<Pair<Sched[]>>>();
+function daySchedule(stationId: string): Promise<Pair<Sched[]>> {
+  const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const key = `${stationId}|${date}`;
+  if (!dayCache.has(key)) {
+    const one = (dir: 0 | 1) => fetch(`${MBTA}/schedules?filter%5Bstop%5D=${stationId}&filter%5Broute%5D=Blue&filter%5Bdirection_id%5D=${dir}&filter%5Bdate%5D=${date}&sort=arrival_time&page%5Blimit%5D=500&fields%5Bschedule%5D=arrival_time,departure_time`)
+      .then((r) => r.json())
+      .then((j) => (j.data || []).map((q: AnyObj) => ({ at: new Date(q.attributes.departure_time || q.attributes.arrival_time).getTime(), trip: q.relationships?.trip?.data?.id || "" }))
+        .filter((x: Sched) => Number.isFinite(x.at)).sort((x: Sched, y: Sched) => x.at - y.at));
+    const p = Promise.all([one(0), one(1)]).then(([d0, d1]) => ({ 0: d0, 1: d1 }));
+    p.catch(() => dayCache.delete(key));
+    dayCache.set(key, p);
+  }
+  return dayCache.get(key)!;
+}
+// deno-lint-ignore no-explicit-any
+type AnyObj = any;
+
 function useLive(stationId: string) {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
-  const [deps, setDeps] = useState<{ 0: Dep[]; 1: Dep[] } | null>(null);
+  const [running, setRunning] = useState<Pair<number> | null>(null);
+  const [live, setLive] = useState<Pair<Dep[]> | null>(null);
+  const [day, setDay] = useState<Pair<Sched[]> | null>(null);
   const [asOf, setAsOf] = useState<Date | null>(null);
 
   useEffect(() => {
     let alive = true;
-    setDeps(null);
+    setLive(null); setDay(null);
+    daySchedule(stationId).then((d) => alive && setDay(d)).catch(() => alive && setDay({ 0: [], 1: [] }));
     const load = async () => {
       try {
         const [v, p] = await Promise.all([
@@ -55,7 +80,7 @@ function useLive(stationId: string) {
         for (const s of [...(v.included || []), ...(p.included || [])]) parent[s.id] = s.relationships?.parent_station?.data?.id || s.id;
         // trip -> parent stop -> arrival time
         const eta: Record<string, Record<string, number>> = {};
-        const here: { 0: Dep[]; 1: Dep[] } = { 0: [], 1: [] };
+        const here: Pair<Dep[]> = { 0: [], 1: [] };
         const now = Date.now();
         for (const q of p.data || []) {
           const trip = q.relationships?.trip?.data?.id, stop = parent[q.relationships?.stop?.data?.id];
@@ -69,33 +94,42 @@ function useLive(stationId: string) {
           }
         }
         const out: Vehicle[] = [];
+        const count: Pair<number> = { 0: 0, 1: 0 };
         for (const x of v.data || []) {
+          count[x.attributes.direction_id as 0 | 1]++;
           const sid = x.relationships?.stop?.data?.id;
           const stop = sid ? parent[sid] : undefined;
           if (!stop || IDX[stop] == null) continue;
           const trip = x.relationships?.trip?.data?.id || "";
           out.push({ id: x.id, trip, dir: x.attributes.direction_id, idx: IDX[stop], stopped: x.attributes.current_status === "STOPPED_AT", eta: eta[trip]?.[stop] ?? null });
         }
-        // End of the line often has no live departures yet: use the timetable, clearly labelled.
-        for (const dir of [0, 1] as const) {
-          if (here[dir].length) continue;
-          const hhmm = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" });
-          const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-          const s = await fetch(`${MBTA}/schedules?filter%5Bstop%5D=${stationId}&filter%5Broute%5D=Blue&filter%5Bdirection_id%5D=${dir}&filter%5Bdate%5D=${date}&filter%5Bmin_time%5D=${hhmm}&sort=departure_time&page%5Blimit%5D=3`).then((r) => r.json()).catch(() => ({ data: [] }));
-          for (const q of s.data || []) { const t = q.attributes.departure_time; if (t && new Date(t).getTime() > now) here[dir].push({ at: new Date(t).getTime(), scheduled: true }); }
-        }
         here[0].sort((a, b) => a.at - b.at); here[1].sort((a, b) => a.at - b.at);
         if (!alive) return;
-        setVehicles(out);
-        setDeps({ 0: here[0].slice(0, 3), 1: here[1].slice(0, 3) });
-        setAsOf(new Date());
-      } catch { if (alive) { setVehicles((t) => t ?? []); setDeps((d) => d ?? { 0: [], 1: [] }); } }
+        setVehicles(out); setRunning(count); setLive(here); setAsOf(new Date());
+      } catch { if (alive) { setVehicles((t) => t ?? []); setLive((d) => d ?? { 0: [], 1: [] }); } }
     };
     load();
     const id = setInterval(load, 15_000);
     return () => { alive = false; clearInterval(id); };
   }, [stationId]);
-  return { vehicles, deps, asOf };
+
+  // Live predictions first; the timetable fills in whatever the predictions don't cover yet.
+  const deps = useMemo<Pair<Dep[]> | null>(() => {
+    if (!live) return null;
+    const out: Pair<Dep[]> = { 0: [], 1: [] };
+    const now = Date.now();
+    for (const dir of [0, 1] as const) {
+      const l = live[dir];
+      const trips = new Set(l.map((d) => d.trip));
+      const lastLive = l.length ? l[l.length - 1].at : now - 60_000;
+      const sched = (day?.[dir] ?? []).filter((x) => x.at > Math.max(now, lastLive + 90_000) && !trips.has(x.trip) && x.at < now + 75 * 60e3)
+        .map((x) => ({ at: x.at, scheduled: true, trip: x.trip }));
+      out[dir] = [...l, ...sched].sort((a, b) => a.at - b.at);
+    }
+    return out;
+  }, [live, day]);
+
+  return { vehicles, running, deps, day, asOf };
 }
 
 const minsTo = (at: number, now: number) => Math.round((at - now) / 60_000);
@@ -105,7 +139,7 @@ const clock = (at: number, now: number) => { const s = Math.max(0, Math.round((a
 export default function LiveLine({ alert }: { stations?: Station[]; alert?: string }) {
   const [sel, setSel] = useState<string>(() => { try { return localStorage.getItem(STORE) || "place-rbmnl"; } catch { return "place-rbmnl"; } });
   useEffect(() => { try { localStorage.setItem(STORE, sel); } catch { /* ignore */ } }, [sel]);
-  const { vehicles, deps, asOf } = useLive(sel);
+  const { vehicles, running, deps, day, asOf } = useLive(sel);
   const now = useNow(1000);
   const narrow = useNarrow();
   const si = IDX[sel];
@@ -153,7 +187,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
             : first.at - now < 180_000 && !first.scheduled ? <><span className={cn("figure text-[56px] leading-none tabular-nums", dir === 0 ? "text-highlight-secondary" : "text-white")}>{clock(first.at, now)}</span><span className="text-[16px] text-white/70">min</span></>
             : <><span className={cn("figure text-[56px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>{m}</span><span className="text-[16px] text-white/70">min</span></>}
         </div>
-        {ds.length > 1 && <p className="mt-1 text-[14px] text-white/75">Then {ds.slice(1).map((d) => Math.max(1, minsTo(d.at, now))).join(" and ")} min</p>}
+        {ds.length > 1 && <p className="mt-1 text-[14px] text-white/75">Then {ds.slice(1, 3).map((d) => Math.max(1, minsTo(d.at, now))).join(" and ")} min</p>}
         {first?.scheduled && <p className="mt-1 text-[12.5px] text-white/55">No live prediction yet, so this is the scheduled time.</p>}
       </div>
     );
@@ -251,7 +285,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           <div>
             <p className="flex items-center gap-2 text-[13px] text-white/70">
               <span className="h-2 w-2 rounded-full bg-[#0297DE]" />
-              Blue Line, live{asOf ? ` · updated ${asOf.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}
+              Blue Line, live{asOf ? ` · updated ${asOf.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}` : ""}
             </p>
             <h2 className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.02em] md:text-[34px]">Next trains at <span className="text-highlight-secondary">{station.name}</span></h2>
           </div>
@@ -273,7 +307,14 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           <Card dir={1} />
         </div>
 
+        <div className="mt-3"><TrainStats running={running} deps={deps} day={day} now={now} atEnd={atEnd} /></div>
+
         <div className="mt-3">{narrow ? vertical : horizontal}</div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <NextHour deps={deps} day={day} narrow={narrow} now={now} atEnd={atEnd} stationName={station.name} />
+          <TrainsByHour day={day} now={now} atEnd={atEnd} />
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-white/70">
           <span>Buses through Revere</span>

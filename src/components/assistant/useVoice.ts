@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { neuralReady, neuralSpeech, neuralStored, warmNeural } from "./neuralVoice";
 
 // Voice for the assistant.
 // Listening: record with MediaRecorder and transcribe on the server with Whisper (accurate, every browser).
 //   Falls back to the browser's Web Speech recognition if recording or the server isn't available.
-// Speaking: natural server voice (Orpheus) when enabled, otherwise the browser's speech synthesis.
+// Speaking, best first:
+//   1. Orpheus on the server (natural; cached, at most two requests per answer to stretch the free allowance)
+//   2. Piper, a neural voice that runs in the browser (natural, unlimited, ~60 MB one-time download)
+//   3. The device's own voice, choosing its best "enhanced"/"natural" voice
 //
 // Reliability rules learned the hard way:
 // - Only ever one microphone stream. Never run Web Speech recognition and a recording stream together.
@@ -46,21 +50,46 @@ let cachedVoice: SpeechSynthesisVoice | null = null;
 function pickVoice(): SpeechSynthesisVoice | null {
   if (cachedVoice) return cachedVoice;
   const voices = window.speechSynthesis?.getVoices() ?? [];
-  const en = voices.filter((v) => /^en(-|_)?(US|GB)?/i.test(v.lang));
-  for (const p of [/natural/i, /neural/i, /google us english/i, /samantha/i, /aria/i, /jenny/i, /ava/i, /allison/i]) {
-    const v = en.find((x) => p.test(x.name));
-    if (v) return (cachedVoice = v);
+  // Novelty voices on Apple devices sound broken; never pick them.
+  const novelty = /albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|hysterical|fred|junior|ralph|kathy|grandpa|grandma|eddy|flo|reed|rocko|sandy|shelley/i;
+  const en = voices.filter((v) => /^en[-_]/i.test(v.lang) && !novelty.test(v.name));
+  const score = (v: SpeechSynthesisVoice) => {
+    let n = 0;
+    if (/premium/i.test(v.name)) n += 60;
+    if (/enhanced|neural|natural/i.test(v.name)) n += 50;
+    if (/online/i.test(v.name)) n += 30;
+    if (/siri/i.test(v.name)) n += 40;
+    if (/google/i.test(v.name)) n += 35;
+    if (/ava|zoe|allison|susan|samantha|aria|jenny|emma|michelle/i.test(v.name)) n += 10;
+    if (/en[-_]US/i.test(v.lang)) n += 8;
+    if (/compact/i.test(v.voiceURI)) n -= 30;
+    if (v.localService === false) n += 5;
+    return n;
+  };
+  return (cachedVoice = en.sort((a, b) => score(b) - score(a))[0] ?? voices[0] ?? null);
+}
+
+// What gets read aloud: the first few sentences, which is where answers put the answer.
+// The full answer stays on screen. Short speech keeps the natural voice within its daily allowance.
+function spokenPart(text: string, max = 320) {
+  const sentences = text.match(/[^.!?]+[.!?]*/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
+  let out = "";
+  for (const sen of sentences) {
+    if (out && out.length + sen.length > max) break;
+    out = out ? `${out} ${sen}` : sen;
   }
-  return (cachedVoice = en[0] ?? voices[0] ?? null);
+  return out.length > max + 120 ? `${out.slice(0, max).replace(/[,;:\s]+\S*$/, "")}.` : out;
 }
 
 // One shared audio element, unlocked by the first tap, so iOS will play answers that arrive later.
 let player: HTMLAudioElement | null = null;
 let unlocked = false;
-let serverTts: boolean | null = null; // null = unknown, false = unavailable this session
+// After a server failure, wait a bit before trying it again (never give up for the whole session).
+let serverDownUntil = 0;
+const ensurePlayer = () => { if (!player) { player = new Audio(); player.preload = "auto"; } return player; };
 export function unlockSpeech() {
   if (typeof window === "undefined") return;
-  if (!player) { player = new Audio(); player.preload = "auto"; }
+  ensurePlayer();
   if (unlocked) return;
   unlocked = true;
   try {
@@ -228,49 +257,88 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     });
   }, []);
 
+  const play = (url: string, run: number) => new Promise<void>((resolve, reject) => {
+    if (run !== speechRun.current) { URL.revokeObjectURL(url); resolve(); return; }
+    const p = ensurePlayer();
+    p.src = url;
+    p.onended = () => { URL.revokeObjectURL(url); resolve(); };
+    p.onerror = () => { URL.revokeObjectURL(url); reject(new Error("playback")); };
+    p.play().catch(reject);
+  });
+
+  // Neural (in-browser) if it's ready or already downloaded, otherwise the device voice.
+  // A first-time download starts in the background so the next answer sounds natural.
+  const speakFallback = useCallback(async (text: string, run: number, done: () => void) => {
+    if (!neuralReady()) {
+      const have = await neuralStored();
+      if (!have) {
+        const conn = (navigator as AnyRec).connection;
+        if (!conn?.saveData) warmNeural();
+        if (run === speechRun.current) speakBrowser(text, done);
+        return;
+      }
+    }
+    try {
+      const parts = (text.match(/[^.!?]+[.!?]*/g) ?? [text]).map((x) => x.trim()).filter(Boolean);
+      // Synthesize sentence by sentence, one ahead, so speech starts quickly.
+      let next = neuralSpeech(parts[0]);
+      for (let i = 0; i < parts.length; i++) {
+        const url = await next;
+        if (i + 1 < parts.length) next = neuralSpeech(parts[i + 1]);
+        if (run !== speechRun.current) { URL.revokeObjectURL(url); return; }
+        await play(url, run);
+      }
+      done();
+    } catch {
+      if (run === speechRun.current) speakBrowser(text, done);
+    }
+  }, [speakBrowser]);
+
   const speak = useCallback(async (markdown: string, onDone?: () => void) => {
-    const text = stripForSpeech(markdown);
+    const text = spokenPart(stripForSpeech(markdown));
     if (!text) { onDone?.(); return; }
     const run = ++speechRun.current;
     let finished = false;
     const done = () => { if (finished || run !== speechRun.current) return; finished = true; setSpeaking(false); onDone?.(); };
     setSpeaking(true);
 
-    if (serverTts !== false && player) {
-      // Split into short chunks: the first starts playing in about a second while the rest are prepared.
-      const sentences = text.match(/[^.!?]+[.!?]*/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
-      const chunks: string[] = [];
-      for (const sen of sentences) {
-        const last = chunks[chunks.length - 1];
-        if (last && last.length + sen.length < (chunks.length === 1 ? 90 : 240)) chunks[chunks.length - 1] = `${last} ${sen}`;
-        else chunks.push(sen);
-      }
-      const fetchChunk = (t: string) => fetch(`${FN}?mode=tts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t.slice(0, 900) }) })
-        .then(async (r) => { if (!r.ok) throw new Error(String(r.status)); return URL.createObjectURL(await r.blob()); });
-      const pending = chunks.slice(0, 12).map((c, i) => (i < 2 ? fetchChunk(c) : null));
-      try {
-        for (let i = 0; i < pending.length; i++) {
-          if (run !== speechRun.current) return;
-          const url = await (pending[i] ?? (pending[i] = fetchChunk(chunks[i])));
-          if (i + 2 < pending.length && !pending[i + 2]) pending[i + 2] = fetchChunk(chunks[i + 2]);
-          serverTts = true;
-          if (run !== speechRun.current) { URL.revokeObjectURL(url); return; }
-          await new Promise<void>((resolve, reject) => {
-            player!.src = url;
-            player!.onended = () => { URL.revokeObjectURL(url); resolve(); };
-            player!.onerror = () => { URL.revokeObjectURL(url); reject(new Error("playback")); };
-            player!.play().catch(reject);
-          });
-        }
-        done();
-        return;
-      } catch {
-        if (run !== speechRun.current) return;
-        if (serverTts !== true) serverTts = false;
-      }
+    if (Date.now() < serverDownUntil) { speakFallback(text, run, done); return; }
+
+    // At most two requests: a short opening so speech starts in about a second, then the rest.
+    const sentences = text.match(/[^.!?]+[.!?]*/g)?.map((x) => x.trim()).filter(Boolean) ?? [text];
+    let first = sentences[0];
+    let i = 1;
+    while (i < sentences.length && first.length + sentences[i].length < 110) first = `${first} ${sentences[i++]}`;
+    const rest = sentences.slice(i).join(" ");
+    const fetchChunk = (t: string) => fetch(`${FN}?mode=tts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) })
+      .then(async (r) => {
+        const left = Number(r.headers.get("x-tts-remaining") ?? NaN);
+        if (left < 15) warmNeural(); // the allowance is nearly used up; get the in-browser voice ready
+        if (!r.ok) throw new Error(String(r.status));
+        return URL.createObjectURL(await r.blob());
+      });
+    const a = fetchChunk(first);
+    const b = rest ? fetchChunk(rest) : null;
+    b?.catch(() => {});
+    try {
+      await play(await a, run);
+    } catch {
+      if (run !== speechRun.current) return;
+      serverDownUntil = Date.now() + 5 * 60e3;
+      b?.then((u) => URL.revokeObjectURL(u)).catch(() => {});
+      speakFallback(text, run, done);
+      return;
     }
-    speakBrowser(text, done);
-  }, [speakBrowser]);
+    if (!b || run !== speechRun.current) { done(); return; }
+    try {
+      await play(await b, run);
+      done();
+    } catch {
+      if (run !== speechRun.current) return;
+      serverDownUntil = Date.now() + 5 * 60e3;
+      speakFallback(rest, run, done); // only what hasn't been said yet
+    }
+  }, [speakFallback]);
 
   const stopSpeaking = useCallback(() => {
     speechRun.current++;
