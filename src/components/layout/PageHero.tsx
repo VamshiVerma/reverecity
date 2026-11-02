@@ -27,13 +27,15 @@ export default function PageHero() {
   return (
     <section className="relative isolate overflow-hidden text-white" aria-label={`${p.title} ${p.accent}`}>
       <div className="sunrise sunrise-band" aria-hidden><div className="glow-blue" /><div className="glow-sun" /><div className="streaks" /><div className="horizon" /><div className="grain" /></div>
-      <div className="relative mx-auto flex min-h-[300px] max-w-[1280px] flex-col justify-end px-4 pb-10 pt-14 md:min-h-[340px] md:px-7">
-        <motion.p {...rise(0)} className="text-[13px] text-white/70">{p.kicker}</motion.p>
-        <h1 className="mt-2 font-serif-display text-[clamp(44px,6vw,84px)] leading-[0.98] tracking-[-0.02em]">
+      <div className="relative mx-auto grid max-w-[1280px] gap-x-10 gap-y-2 px-4 pb-6 pt-7 md:grid-cols-[auto_1fr] md:items-end md:px-7 md:pb-7 md:pt-9">
+        <div>
+        <motion.p {...rise(0)} className="text-[12.5px] text-white/65">{p.kicker}</motion.p>
+        <h1 className="mt-1 font-serif-display text-[clamp(38px,4.4vw,60px)] leading-[0.98] tracking-[-0.02em]">
           <motion.span {...rise(0.08)} className="inline-block">{p.title}</motion.span>{" "}
           <motion.em {...rise(0.2)} className="inline-block italic text-highlight-secondary">{p.accent}.</motion.em>
         </h1>
-        <motion.p {...rise(0.32)} className="mt-4 max-w-[640px] text-[16px] leading-relaxed text-white/80 md:text-[18px]">{p.text}</motion.p>
+        </div>
+        <motion.p {...rise(0.32)} className="max-w-[560px] text-[15px] leading-relaxed text-white/75 md:justify-self-end md:pb-1.5 md:text-right">{p.text}</motion.p>
       </div>
     </section>
   );

@@ -60,7 +60,7 @@ function intents(q: string) {
     police: has(/crime|safe|safety|incident|calls?\b|arrest|theft|stolen|break.?in|disturb|noise|fight|shots?|domestic|accident|crash|happen|going on|activity|suspicious|neighbou?rhood|my (block|street|area)|police (log|activity|calls?|report)/)
       || (has(/police|cops?/) && !has(/budget|spend|cost|money|fund|salar|payroll|fy ?2?0?2[0-9]|million|\$|department budget/)),
     budget: has(/budget|spend|spent|cost|money|fund|tax|revenue|salar|payroll|department|appropriat|fiscal|fy ?2?0?2[0-9]|million|dollar|\$|school|dpw|public works|pension|debt|capital|levy|ftes?|staff|employees|positions/),
-    weather: has(/weather|temperature|rain|snow|wind|cold|hot|forecast|storm|umbrella|sunny|degrees|alert|warning|flood/) && !has(/budget|spend|cost|money|fund|removal|plow|fy ?2?0?2[0-9]|\$/),
+    weather: has(/weather|temperature|\brain(y|ing)?\b|\bsnow|\bwind(y)?\b|\bcold\b|\bhot\b|forecast|\bstorm|umbrella|sunny|degrees|weather alert|warning|flood/) && !has(/budget|spend|cost|money|fund|removal|plow|fy ?2?0?2[0-9]|\$/),
     mbta: has(/mbta|\bt\b|train|blue line|subway|transit|commute|wonderland|revere beach station|beachmont|suffolk downs|bus|delay|shuttle/),
     housing: has(/hous|home (value|price)|homes?\b.*(cost|worth|price)|\brents?\b|\brental|apartment|condo|real estate market|afford|zillow|mortgage|cost of living|live in revere/) && !has(/property tax|tax levy|housing authority budget/),
   };
@@ -177,22 +177,37 @@ async function housingContext() {
   return { rows, month: rows.find((r) => r.place === "Revere")?.month };
 }
 
-async function mbtaContext() {
+const REVERE_STATIONS: [string, string, RegExp][] = [
+  ["place-wondl", "Wonderland", /wonderland/],
+  ["place-rbmnl", "Revere Beach", /revere beach(?! b(ou)?l(e)?v)/],
+  ["place-bmmnl", "Beachmont", /beachmont/],
+  ["place-sdmnl", "Suffolk Downs", /suffolk downs/],
+];
+async function mbtaContext(q = "") {
   const base = "https://api-v3.mbta.com";
-  const [al, pr] = await Promise.all([
+  const s = q.toLowerCase();
+  const asked = REVERE_STATIONS.filter(([, , re]) => re.test(s));
+  const stations = asked.length ? asked : [REVERE_STATIONS[1]];
+  const wantDir = /\b(boston|downtown|bowdoin|airport|inbound|state|aquarium|maverick|government center)\b/.test(s) ? 0 : /\b(to|toward|towards) wonderland\b|northbound|outbound/.test(s) ? 1 : null;
+  const [al, ...prs] = await Promise.all([
     fetch(`${base}/alerts?filter[route]=Blue,110,116,117,119,411,426,450&filter[datetime]=NOW`).then((r) => r.json()).catch(() => ({ data: [] })),
-    fetch(`${base}/predictions?filter[stop]=${Object.keys(STOPS).join(",")}&filter[route]=Blue&sort=departure_time&page[limit]=24&include=stop`).then((r) => r.json()).catch(() => ({ data: [] })),
+    ...stations.map(([id]) => fetch(`${base}/predictions?filter[stop]=${id}&filter[route]=Blue&sort=departure_time&page[limit]=10`).then((r) => r.json()).catch(() => ({ data: [] }))),
   ]);
   const alerts = (al.data || []).map((a: any) => ({ effect: a.attributes.effect, header: a.attributes.header, severity: a.attributes.severity, lifecycle: a.attributes.lifecycle }));
   const now = Date.now();
-  const preds = (pr.data || []).map((p: any) => {
-    const t = p.attributes.departure_time || p.attributes.arrival_time;
-    const parent = p.relationships?.stop?.data?.id || "";
-    const inc = (pr.included || []).find((s: any) => s.id === parent);
-    const station = STOPS[inc?.relationships?.parent_station?.data?.id] || inc?.attributes?.name || parent;
-    return t ? { station, toward: p.attributes.direction_id === 0 ? "Bowdoin (Downtown)" : "Wonderland", mins: Math.round((new Date(t).getTime() - now) / 60e3) } : null;
-  }).filter((x: any) => x && x.mins >= 0).slice(0, 12);
-  return { alerts, preds };
+  const preds: { station: string; toward: string; dir: number; mins: number }[] = [];
+  stations.forEach(([, name], i) => {
+    for (const p of prs[i].data || []) {
+      const t = p.attributes.departure_time || p.attributes.arrival_time;
+      if (!t) continue;
+      const mins = Math.round((new Date(t).getTime() - now) / 60e3);
+      const dir = p.attributes.direction_id;
+      if (mins < 0 || (wantDir != null && dir !== wantDir)) continue;
+      if (name === "Wonderland" && dir === 1) continue; // arrivals at the end of the line aren't departures
+      preds.push({ station: name, toward: dir === 0 ? "Boston (Bowdoin)" : "Wonderland", dir, mins });
+    }
+  });
+  return { alerts, preds: preds.slice(0, 12), stations: stations.map(([, n]) => n), wantDir };
 }
 
 // ---------- LLM ----------
@@ -269,7 +284,7 @@ Deno.serve(async (req) => {
       it.police ? policeContext(q) : null,
       it.budget ? budgetContext(q).catch(() => []) : null,
       it.weather ? weatherContext() : null,
-      it.mbta ? mbtaContext() : null,
+      it.mbta ? mbtaContext(q) : null,
       it.budget ? departmentFigures(q).catch(() => []) : [],
       it.housing ? housingContext().catch(() => null) : null,
     ]);
@@ -355,9 +370,18 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
         if (weather.alerts.length) parts.push(`- ⚠️ ${weather.alerts.map((a: any) => a.event).join(", ")}`);
       }
       if (mbta) {
-        parts.push(mbta.alerts.length ? `**MBTA:** ${mbta.alerts.length} active alert(s) — ${mbta.alerts[0].header}` : `**MBTA:** no active alerts on the Blue Line or Revere bus routes.`);
-        const nb = mbta.preds.filter((p: any) => p.station === "Revere Beach").slice(0, 3);
-        if (nb.length) parts.push(`- Revere Beach: ${nb.map((p: any) => `${p.toward} in ${p.mins} min`).join(" · ")}`);
+        const fmt = (m: number) => (m <= 0 ? "boarding now" : `${m} min`);
+        for (const st of mbta.stations) {
+          for (const dir of mbta.wantDir != null ? [mbta.wantDir] : [0, 1]) {
+            const l = mbta.preds.filter((p: any) => p.station === st && p.dir === dir);
+            if (!l.length) continue;
+            parts.push(`**Next train from ${st} to ${dir === 0 ? "Boston" : "Wonderland"}: ${fmt(l[0].mins)}**${l.length > 1 ? `, then ${l.slice(1, 3).map((p: any) => `${p.mins} min`).join(" and ")}` : ""}.`);
+          }
+        }
+        const blue = mbta.alerts.filter((a: any) => /blue line|wonderland|revere|beachmont|suffolk|orient|airport|maverick/i.test(a.header));
+        parts.push(blue.length ? `- ⚠️ Blue Line alert: ${blue[0].header}` : `- No alerts on the Blue Line right now.`);
+        const bus = mbta.alerts.filter((a: any) => !blue.includes(a));
+        if (bus.length) parts.push(`- Bus: ${bus[0].header}`);
       }
       if (housing && housing.rows.length) {
         const r = housing.rows.find((x) => x.place === "Revere");

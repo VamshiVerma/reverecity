@@ -137,7 +137,7 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
         <div className="glow-blue" /><div className="glow-sun" /><div className="streaks" /><div className="horizon" /><div className="grain" />
       </div>
 
-      <div className="relative mx-auto flex max-w-[1280px] flex-col px-4 pb-10 pt-5 md:min-h-[680px] md:px-7 md:pt-8">
+      <div className="relative mx-auto flex max-w-[1280px] flex-col px-4 pb-10 pt-5 md:min-h-[600px] md:px-7 md:pt-8">
         <div className="flex items-center justify-between text-[13px] text-white/70">
           <span className="flex items-center gap-2">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-secondary opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-highlight-secondary" /></span>

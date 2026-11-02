@@ -49,7 +49,7 @@ const DashboardLayout = ({ children, pageTitle, hero }: DashboardLayoutProps) =>
           <LiveTicker />
         </div>
         {hero ?? <PageHero />}
-        <main className="flex-1 px-4 py-6 md:px-7 md:py-8">
+        <main className="flex-1 px-4 py-5 md:px-7 md:py-6">
           <div key={pageTitle} className="mx-auto w-full max-w-[1280px] animate-rise space-y-6">
             {children}
           </div>

@@ -126,18 +126,6 @@ const WeatherPage: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-          </div>
-          <Button 
-            onClick={handleRefresh} 
-            disabled={refreshing || loading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> 
-            {refreshing ? 'Refreshing...' : 'Refresh Weather'}
-          </Button>
-        </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-64">

@@ -403,22 +403,35 @@ function DataCard({ card }: { card: AskCard }) {
     );
   }
   if (card.type === "mbta") {
+    const groups: { key: string; station: string; toward: string; mins: number[] }[] = [];
+    for (const p of card.preds) {
+      const toward = /wonderland/i.test(p.toward) ? "Wonderland" : "Boston";
+      const key = `${p.station}|${toward}`;
+      const g = groups.find((x) => x.key === key) ?? (groups.push({ key, station: p.station, toward, mins: [] }), groups[groups.length - 1]);
+      if (g.mins.length < 3) g.mins.push(p.mins);
+    }
     return (
       <div className={shell}>
-        {card.alerts.map((a, i) => (
-          <div key={i} className="flex gap-2 border-b border-border bg-amber-500/[0.06] p-3 text-xs text-foreground">
-            <span className="mt-0.5 shrink-0 rounded bg-amber-400/20 px-1.5 text-[10px] font-bold text-foreground">{a.effect.replace(/_/g, " ")}</span>
-            <span className="line-clamp-2">{a.header}</span>
+        {groups.map((g) => (
+          <div key={g.key} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
+            <span className={cn("h-9 w-1.5 shrink-0 rounded-full", g.toward === "Boston" ? "bg-highlight-secondary" : "bg-highlight")} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] text-muted-foreground">{g.station}</div>
+              <div className="text-[15px] font-medium text-foreground">To {g.toward}</div>
+            </div>
+            <div className="text-right">
+              <span className={cn("figure text-[30px] leading-none", g.toward === "Boston" ? "text-highlight-secondary" : "text-foreground")}>{g.mins[0] <= 0 ? "Now" : g.mins[0]}</span>
+              {g.mins[0] > 0 && <span className="ml-1 text-[13px] text-muted-foreground">min</span>}
+              {g.mins.length > 1 && <div className="text-[12px] text-muted-foreground">then {g.mins.slice(1).join(", ")} min</div>}
+            </div>
           </div>
         ))}
-        <div className="divide-y divide-border">
-          {card.preds.length ? card.preds.map((p, i) => (
-            <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-sky-400" />{p.station}<span className="text-xs text-muted-foreground">→ {p.toward}</span></span>
-              <span className="font-mono text-xs tabular-nums text-foreground">{p.mins <= 0 ? "now" : `${p.mins} min`}</span>
-            </div>
-          )) : <div className="px-3 py-2 text-xs text-muted-foreground">No live departures right now.</div>}
-        </div>
+        {!groups.length && <div className="px-4 py-3 text-[14px] text-muted-foreground">No trains predicted right now.</div>}
+        {card.alerts.slice(0, 1).map((a, i) => (
+          <div key={i} className="border-t border-border bg-secondary/50 px-4 py-2.5 text-[13px] text-foreground">
+            <span className="font-semibold text-warning">{a.effect.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}: </span>{a.header}
+          </div>
+        ))}
       </div>
     );
   }
