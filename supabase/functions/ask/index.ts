@@ -274,8 +274,10 @@ async function crimeTrend() {
 
 // ---------- LLM ----------
 const SYSTEM = `You are the Revere City assistant for residents of Revere, Massachusetts.
-Answer using ONLY the CONTEXT provided. Be warm, plain-spoken and specific: give numbers, dates, street names and times.
-- If the context does not contain the answer, say so plainly and suggest where to look. Never invent figures.
+Base answers on the CONTEXT provided: Revere's own data (police log, adopted budgets, city directory, live MBTA, weather, housing). Be warm, plain-spoken and specific: give numbers, dates, street names and times.
+- Every number must come from the CONTEXT. Never invent figures, names, phone numbers or dates.
+- Do not use outside knowledge. If the CONTEXT doesn't cover the question, say plainly that you don't have it and point to revere.org or the right office from the directory.
+- Write for residents of all ages, including older residents and people reading on a phone. Short sentences.
 - Police data comes from the Revere PD public dispatch log; say what date it runs through. Do not speculate about individuals.
 - For budget answers, cite the document and page like (FY2027 Adopted Budget, p. 47). Prefer FY2027 (current fiscal year) unless asked otherwise.
 - Keep answers concise: a short direct answer first, then 2–5 bullets if useful. Use Markdown. No preamble.`;
@@ -296,11 +298,21 @@ async function llm(context: string, question: string, history: Msg[]): Promise<{
       }
     }
     if (groq) {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST", headers: { Authorization: `Bearer ${groq}`, "content-type": "application/json" },
-        body: JSON.stringify({ model: "llama-3.3-70b-versatile", temperature: 0.3, max_tokens: 900, messages: [{ role: "system", content: SYSTEM }, ...hist, { role: "user", content: user }] }),
-      });
-      if (r.ok) { const j = await r.json(); return { text: j.choices?.[0]?.message?.content ?? "", model: "llama-3.3-70b (Groq)" }; }
+      // Best free models on Groq first; fall back if one is busy or rate-limited.
+      for (const [model, label, extra] of [
+        ["openai/gpt-oss-120b", "GPT-OSS 120B (Groq)", { reasoning_effort: "low" }],
+        ["qwen/qwen3.8-27b", "Qwen3 27B (Groq)", { reasoning_format: "hidden" }],
+        ["openai/gpt-oss-20b", "GPT-OSS 20B (Groq)", { reasoning_effort: "low" }],
+      ] as const) {
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST", headers: { Authorization: `Bearer ${groq}`, "content-type": "application/json" },
+          body: JSON.stringify({ model, temperature: 0.3, max_completion_tokens: 1200, ...extra, messages: [{ role: "system", content: SYSTEM }, ...hist, { role: "user", content: user }] }),
+        });
+        if (!r.ok) continue;
+        const j = await r.json();
+        const text = String(j.choices?.[0]?.message?.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+        if (text) return { text, model: label };
+      }
     }
     if (gem) {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gem}`, {
@@ -419,8 +431,31 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       for (const c of civic) sources.push({ kind: "budget", label: c.doc_id === "fy2027-budget" ? "FY2027 Adopted Budget" : "FY2026 Budget", detail: `p. ${c.page} · ${c.dept}`, url: `${c.source_url}#page=${c.page}` });
     }
     if (trend) {
-      ctx.push(`POLICE CALL TRENDS (Revere PD dispatch log): ${trend.total} calls ${trend.since} to ${trend.latest} vs ${trend.prevTotal} in the 28 days before. Arrests ${trend.arrests} vs ${trend.prevArrests}. Biggest changes: ${trend.changes.map((x: any) => `${pretty(x.k)} ${x.before}->${x.now}`).join("; ")}. The log lists calls, not confirmed crimes.`);
+      ctx.push(`POLICE CALL TRENDS (Revere PD dispatch log). Two equal ${trend.days}-day windows.
+Latest window ${trend.since} to ${trend.latest}: ${trend.total} calls, ${trend.arrests} arrests.
+Earlier window ${trend.prevSince} to ${trend.prevUntil}: ${trend.prevTotal} calls, ${trend.prevArrests} arrests.
+Calls changed by ${trend.total - trend.prevTotal} (${trend.prevTotal ? (((trend.total - trend.prevTotal) / trend.prevTotal) * 100).toFixed(0) : "n/a"}%); arrests changed by ${trend.arrests - trend.prevArrests}.
+Biggest changes by type (earlier -> latest): ${trend.changes.map((x: any) => `${pretty(x.k)} ${x.before} -> ${x.now}`).join("; ")}.
+The log lists calls officers responded to, not confirmed crimes.`);
       sources.push({ kind: "police", label: "Revere PD public log", detail: `${fmtShort(trend.prevSince)}–${fmtShort(trend.latest)}`, url: trend.sources[trend.sources.length - 1] });
+    }
+
+    const llmAvailable = !!(Deno.env.get("GROQ_API_KEY") || Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("GEMINI_API_KEY") || Deno.env.get("OPENAI_API_KEY"));
+    if (llmAvailable) ctx.push(`ABOUT REVERE (verified background):
+- Revere Beach opened in 1896 as the first public beach in the United States; it is part of the state-run Revere Beach Reservation.
+- The town was renamed Revere, after Paul Revere, in 1871 and became a city in 1914.
+- Kelly's Roast Beef was founded on Revere Beach in 1951.
+- Revere Beach hosts the annual International Sand Sculpting Festival.
+- Suffolk Downs, the former horse-racing track on the Revere/East Boston line, is being redeveloped as a new neighborhood. Wonderland Greyhound Park closed in 2009.
+- Four MBTA Blue Line stations are in Revere: Wonderland, Revere Beach, Beachmont and Suffolk Downs.
+- City government: an elected Mayor (four-year term) and an eleven-member City Council (two-year terms).`);
+    if (llmAvailable && !(civic && civic.length)) {
+      const { data: dir } = await supabase.from("civic_directory").select("dept,name,title,phone,location,page,doc_id");
+      ctx.push(`CITY DIRECTORY (background; from the adopted budget books):\n${((dir || []) as any[]).map((c) => `${c.dept}: ${c.name}${c.title ? `, ${c.title}` : ""}${c.phone ? `, ${c.phone}` : ""}${c.location ? `, ${c.location}` : ""}`).join("\n")}`);
+    }
+    if (llmAvailable && !r.intents.size) {
+      const extra = await budgetContext(q, emb).catch(() => []);
+      if (extra.length) ctx.push(`CITY DOCUMENT PASSAGES (may or may not be relevant):\n${extra.slice(0, 4).map((c: any) => `[${c.doc_title}, p. ${c.page}]\n${c.content}`).join("\n---\n")}`);
     }
 
     const seenSrc = new Set<string>();

@@ -130,7 +130,7 @@ export default function Assistant() {
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 250); else { voice.stopSpeaking(); voice.stopListening(); } }, [open]); // eslint-disable-line
 
   const reset = () => { abortRef.current?.abort(); voice.stopSpeaking(); setMsgs([]); setBusy(false); };
-  const orbState = busy ? "busy" : voice.listening ? "listening" : voice.speaking ? "speaking" : "idle";
+  const orbState = busy || voice.transcribing ? "busy" : voice.listening ? "listening" : voice.speaking ? "speaking" : "idle";
 
   return (
     <>
@@ -215,7 +215,13 @@ export default function Assistant() {
                   </div>
                 )}
                 <AnimatePresence mode="wait">
-                  {voice.listening ? (
+                  {voice.transcribing ? (
+                    <motion.div key="trans" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2 text-[16px] text-muted-foreground">
+                      <span className="flex gap-1">{[0, 1, 2].map((i) => <motion.span key={i} className="h-2 w-2 rounded-full bg-highlight" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />)}</span>
+                      Working out what you said…
+                    </motion.div>
+                  ) : voice.listening ? (
                     <motion.div key="listen" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                       className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2">
                       <Wave level={voice.level} />

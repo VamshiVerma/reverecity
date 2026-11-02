@@ -19,7 +19,7 @@ const IDX = Object.fromEntries(LINE.map((s, i) => [s.id, i]));
 const STORE = "revere.station";
 const MBTA = "https://api-v3.mbta.com";
 const HOP_SEC = 110; // typical seconds between neighbouring stations
-const ROW = 56;      // px per station on the vertical (phone) map
+const ROW = 66;      // px per station on the vertical (phone) map
 
 export type Station = { id: string; name: string; toBowdoin: number | null; toWonderland: number | null };
 type Vehicle = { id: string; trip: string; dir: 0 | 1; idx: number; stopped: boolean; eta: number | null };
@@ -99,6 +99,8 @@ function useLive(stationId: string) {
 }
 
 const minsTo = (at: number, now: number) => Math.round((at - now) / 60_000);
+/** Under three minutes the countdown ticks in seconds, so the board visibly moves. */
+const clock = (at: number, now: number) => { const s = Math.max(0, Math.round((at - now) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 export default function LiveLine({ alert }: { stations?: Station[]; alert?: string }) {
   const [sel, setSel] = useState<string>(() => { try { return localStorage.getItem(STORE) || "place-rbmnl"; } catch { return "place-rbmnl"; } });
@@ -128,7 +130,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
       const d = deps?.[dir]?.find((x) => !x.scheduled && x.at > now - 20_000);
       if (!d?.trip) continue;
       const v = trains.find((t) => t.trip === d.trip);
-      if (v) { const m = minsTo(d.at, now); tag[v.id] = m <= 0 ? "Boarding" : `${m} min`; }
+      if (v) { const left = d.at - now; tag[v.id] = left <= 30_000 ? "Boarding" : left < 180_000 ? clock(d.at, now) : `${minsTo(d.at, now)} min`; }
     }
     return tag;
   }, [deps, trains, now]);
@@ -147,7 +149,8 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
         <div className="mt-2 flex min-h-[56px] items-baseline gap-2">
           {deps == null ? <span className="figure text-[44px] leading-none text-white/50">…</span>
             : m == null ? <span className="self-center text-[17px] text-white/70">No more trains listed today</span>
-            : m <= 0 ? <span className={cn("figure text-[44px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>Boarding</span>
+            : first.at - now <= 30_000 ? <span className={cn("figure text-[44px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>Boarding</span>
+            : first.at - now < 180_000 && !first.scheduled ? <><span className={cn("figure text-[56px] leading-none tabular-nums", dir === 0 ? "text-highlight-secondary" : "text-white")}>{clock(first.at, now)}</span><span className="text-[16px] text-white/70">min</span></>
             : <><span className={cn("figure text-[56px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>{m}</span><span className="text-[16px] text-white/70">min</span></>}
         </div>
         {ds.length > 1 && <p className="mt-1 text-[14px] text-white/75">Then {ds.slice(1).map((d) => Math.max(1, minsTo(d.at, now))).join(" and ")} min</p>}
@@ -188,7 +191,8 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
         {trains.map((t) => (
           <div key={t.id} className="absolute z-10 -translate-x-1/2 transition-[left] duration-1000 ease-linear motion-reduce:transition-none"
             style={{ left: `${(t.pos / (N - 1)) * 100}%`, top: t.dir === 0 ? 34 : 98 }}>
-            <div className={cn(pill(t.dir), t.dir === 1 && "flex-row-reverse")}>
+            {!t.stopped && <span aria-hidden className={cn("absolute top-1/2 h-[6px] w-[40px] -translate-y-1/2 rounded-full", t.dir === 0 ? "right-full bg-gradient-to-l from-highlight-secondary/70 to-transparent" : "left-full bg-gradient-to-r from-white/60 to-transparent")} />}
+            <div className={cn(pill(t.dir), "relative", t.dir === 1 && "flex-row-reverse")}>
               {windows(t.dir)}<span className={cn("text-[10px] font-black", t.dir === 0 ? "text-[#2a0d04]" : "text-[#04121c]")}>{t.dir === 0 ? "›" : "‹"}</span>
             </div>
             {nextTag[t.id] && <div className={cn("absolute", t.dir === 0 ? "-top-[24px] left-1/2 -translate-x-1/2" : "left-full top-1/2 ml-1.5 -translate-y-1/2", tagCls(t.dir))}>{nextTag[t.id]}</div>}
@@ -208,6 +212,8 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
       </div>
       <div className="relative mt-4" style={{ height: (N - 1) * ROW + 30 }}>
         <div className="absolute left-[44px] top-[8px] w-[6px] rounded-full bg-[#0297DE]" style={{ height: (N - 1) * ROW + 12 }} />
+        <div className="flow-down absolute left-[20px] top-[8px] w-[3px] rounded-full text-highlight-secondary" style={{ height: (N - 1) * ROW + 12 }} aria-hidden />
+        <div className="flow-up absolute left-[74px] top-[8px] w-[3px] rounded-full text-white" style={{ height: (N - 1) * ROW + 12 }} aria-hidden />
         {LINE.map((s, i) => {
           const mine = s.id === sel;
           return (
@@ -223,7 +229,8 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
         {trains.map((t) => (
           <div key={t.id} className="absolute z-10 -translate-y-1/2 transition-[top] duration-1000 ease-linear motion-reduce:transition-none"
             style={{ top: t.pos * ROW + 14, left: t.dir === 0 ? 8 : 62 }}>
-            <div className={cn(pill(t.dir), "h-[18px] w-[28px] justify-center")}>
+            {!t.stopped && <span aria-hidden className={cn("absolute left-1/2 w-[6px] -translate-x-1/2 rounded-full", t.dir === 0 ? "bottom-full h-[30px] bg-gradient-to-t from-highlight-secondary/70 to-transparent" : "top-full h-[30px] bg-gradient-to-b from-white/60 to-transparent")} />}
+            <div className={cn(pill(t.dir), "relative h-[18px] w-[28px] justify-center")}>
               <span className={cn("text-[10px] font-black", t.dir === 0 ? "text-[#2a0d04]" : "text-[#04121c]")}>{t.dir === 0 ? "↓" : "↑"}</span>
             </div>
             

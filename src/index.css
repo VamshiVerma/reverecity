@@ -321,3 +321,10 @@ div[role="status"][data-sonner-toast] {
   [role="tablist"].grid { display: flex !important; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
   [role="tablist"].grid > * { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; }
 }
+/* Live train lanes: a soft pattern flowing in the direction of travel. */
+.flow-down, .flow-up { background: repeating-linear-gradient(180deg, transparent 0 14px, currentColor 14px 20px); background-size: 100% 40px; opacity: .55; }
+.flow-down { animation: flow-d 1.8s linear infinite; }
+.flow-up { animation: flow-u 1.8s linear infinite; }
+@keyframes flow-d { from { background-position: 0 0; } to { background-position: 0 40px; } }
+@keyframes flow-u { from { background-position: 0 40px; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .flow-down, .flow-up { animation: none; } }
