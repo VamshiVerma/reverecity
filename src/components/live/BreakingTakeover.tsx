@@ -29,6 +29,12 @@ const remember = (id: string) => {
 // Bands that wipe the screen, in the site palette; the last one stays as the field.
 const BANDS = ["#FC734D", "#02070A", "#0297DE", "#061520", "#02070A"];
 
+const RIDER_MASK = {
+  WebkitMaskImage: "url(/logo-rider.png)", maskImage: "url(/logo-rider.png)",
+  WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+  WebkitMaskPosition: "center", maskPosition: "center",
+} as const;
+
 const ICON = { mbta: TrainFront, weather: CloudSun, police: ShieldCheck, city: Megaphone } as const;
 
 function pick(items: PulseItem[]) {
@@ -110,7 +116,6 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
   }
 
   const contentAt = CONTENT_AT;
-  const narrow = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
     <motion.div role="alertdialog" aria-modal="true" aria-label={`${word}: ${item.text}`} onClick={onClose}
@@ -135,20 +140,28 @@ function Takeover({ item, reduce, onClose, onOpen }: { item: PulseItem; reduce: 
           animate={{ x: [0, -50, 0], y: [0, -30, 0] }} transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(2,7,10,0.35)_100%)]" />
         <div className="absolute inset-0 opacity-[0.03] [background-image:radial-gradient(rgba(255,255,255,0.9)_0.6px,transparent_0.6px)] [background-size:4px_4px]" />
-        {/* Paul Revere gallops across behind the story, in faint cantaloupe light, with a soft trail */}
-        <motion.div className="absolute bottom-[3%] left-0 flex h-[38vh] items-center md:bottom-[2%] md:h-[60vh]"
-          initial={{ x: narrow ? "-125vw" : "-75vw" }}
-          animate={{ x: narrow ? "70vw" : "105vw", transition: { delay: IN * 0.35, duration: narrow ? 5.6 : 7.5, ease: narrow ? "linear" : [0.3, 0.1, 0.4, 1] } }}>
-          <div className="h-[18%] w-[45vw] rounded-full bg-gradient-to-r from-transparent via-[#FC734D]/10 to-[#FC734D]/25 blur-2xl" />
-          <motion.div className="-ml-[6vw] aspect-square h-full opacity-60 md:opacity-100"
-            animate={{ y: [0, -14, 0], rotate: [-1.5, 1.5, -1.5] }} transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              background: "linear-gradient(100deg, rgba(252,115,77,0.18) 0%, rgba(252,115,77,0.42) 100%)",
-              WebkitMaskImage: "url(/logo-rider.png)", maskImage: "url(/logo-rider.png)",
-              WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
-              WebkitMaskPosition: "center", maskPosition: "center",
-            }} />
+        {/* Paul Revere was an engraver: the rider appears as a large still emblem drawn in fine engraved lines,
+            wiped in as the bands settle, then a single sheen of light passes across it. No running, no bobbing. */}
+        <div className="absolute right-[-3%] top-[4%] aspect-square h-[28vh] [-webkit-mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] md:top-auto md:bottom-[-4%] md:right-[-1%] md:h-[78vh] md:[-webkit-mask-image:none] md:[mask-image:none]">
+        <motion.div className="absolute inset-0"
+          style={{ ...RIDER_MASK }}
+          initial={{ clipPath: "inset(0 100% 0 0)", scale: 1.08 }}
+          animate={{ clipPath: "inset(0 0% 0 0)", scale: 1, transition: { clipPath: { delay: IN * 0.7, duration: 1.6, ease: EASE }, scale: { delay: IN * 0.7, duration: 7, ease: SOFT } } }}>
+          {/* engraved hairlines, fading out toward the story */}
+          <div className="absolute inset-0" style={{
+            background: "repeating-linear-gradient(-8deg, rgba(252,115,77,0.85) 0 1.4px, transparent 1.4px 6px)",
+            WebkitMaskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.35) 35%, #000 80%)",
+            maskImage: "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.35) 35%, #000 80%)",
+          }} />
+          {/* a faint solid fill underneath so the shape reads at a glance */}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(252,115,77,0)_10%,rgba(252,115,77,0.12)_100%)]" />
+          {/* one pass of light */}
+          <motion.div className="absolute inset-0"
+            style={{ background: "linear-gradient(100deg, transparent 38%, rgba(255,214,198,0.75) 50%, transparent 62%)", backgroundSize: "260% 100%" }}
+            initial={{ backgroundPosition: "130% 0" }}
+            animate={{ backgroundPosition: "-30% 0", transition: { delay: IN * 0.7 + 1.1, duration: 2.2, ease: [0.45, 0, 0.2, 1] } }} />
         </motion.div>
+        </div>
       </motion.div>
 
       {/* 3. The story */}
