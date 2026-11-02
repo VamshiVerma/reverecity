@@ -344,7 +344,7 @@ export function AiOrb({ state = "idle", level = 0, className }: { state?: string
   return (
     <span data-state={state} className={cn("ai-orb block shrink-0", className)} aria-hidden
       style={{ ["--s" as string]: state === "listening" ? String(1 + Math.min(0.18, level * 0.35)) : "1" }}>
-      <span className="swirl" /><span className="blob" /><span className="core" /><span className="gloss" />
+      <span className="clip"><span className="l1" /><span className="l2" /><span className="gloss" /></span>
     </span>
   );
 }

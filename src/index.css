@@ -329,16 +329,31 @@ div[role="status"][data-sonner-toast] {
 @keyframes flow-u { from { background-position: 0 40px; } to { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .flow-down, .flow-up { animation: none; } }
 
-/* AI orb: a glassy sphere with light moving inside it. Speed and glow follow the assistant's state. */
+/* AI orb: a glass sphere with soft coloured light turning inside it.
+   Built only from radial gradients and rotation (no blur filters or blend modes), which render the same on
+   iPhone Safari as on desktop. The glow lives on the outer element so the circular clip can't cut it off. */
 @keyframes ai-swirl { to { transform: rotate(360deg); } }
-@keyframes ai-drift { 0%, 100% { transform: translate(-12%, -8%) scale(1); } 50% { transform: translate(14%, 10%) scale(1.15); } }
-.ai-orb { position: relative; isolation: isolate; overflow: hidden; border-radius: 9999px; background: #02070A;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 0 calc(10px + var(--glow, 0px)) rgba(2,151,222,.45); transition: box-shadow .25s ease, transform .12s ease-out; transform: scale(var(--s, 1)); }
-.ai-orb > .swirl { position: absolute; inset: -35%; background: conic-gradient(from 0deg, #0297DE, #3fc1ff, #b8ecff, #FC734D, #ff9a7a, #0297DE); filter: blur(5px) saturate(1.25); animation: ai-swirl var(--spin, 7s) linear infinite; }
-.ai-orb > .blob { position: absolute; width: 70%; height: 70%; left: 15%; top: 15%; border-radius: 9999px; background: radial-gradient(circle, rgba(255,255,255,.75), rgba(255,255,255,0) 65%); mix-blend-mode: soft-light; animation: ai-drift var(--drift, 5s) ease-in-out infinite; }
-.ai-orb > .core { position: absolute; inset: 10%; border-radius: 9999px; background: conic-gradient(from 180deg, rgba(252,115,77,.0), rgba(252,115,77,.65), rgba(2,151,222,.0), rgba(2,151,222,.7), rgba(252,115,77,0)); filter: blur(6px); mix-blend-mode: screen; animation: ai-swirl calc(var(--spin, 7s) * .7) linear infinite reverse; }
-.ai-orb > .gloss { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(70% 50% at 32% 20%, rgba(255,255,255,.7), rgba(255,255,255,0) 60%), radial-gradient(100% 100% at 50% 50%, rgba(2,7,10,0) 62%, rgba(2,7,10,.35) 100%); }
-.ai-orb[data-state="busy"] { --spin: 1.6s; --drift: 1.8s; --glow: 10px; }
-.ai-orb[data-state="listening"] { --spin: 3.5s; --glow: 14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 0 calc(10px + var(--glow)) rgba(252,115,77,.55); }
-.ai-orb[data-state="speaking"] { --spin: 2.6s; --drift: 2.4s; --glow: 16px; }
-@media (prefers-reduced-motion: reduce) { .ai-orb > .swirl, .ai-orb > .blob, .ai-orb > .core { animation: none; } }
+.ai-orb { position: relative; display: block; border-radius: 9999px; transform: scale(var(--s, 1)); transition: transform .12s ease-out, box-shadow .3s ease;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 0 calc(10px + var(--glow, 0px)) rgba(2,151,222,.45); }
+/* Every layer is itself a circle and only ever rotates, so it stays a circle without relying on clipping
+   (iPhone Safari ignores overflow/border-radius clipping on animated children and showed a square). */
+.ai-orb > .clip { position: absolute; inset: 0; border-radius: 9999px; background: #0297DE; }
+.ai-orb .l1, .ai-orb .l2 { position: absolute; inset: 0; border-radius: 9999px; will-change: transform; }
+.ai-orb .l1 { background:
+    radial-gradient(circle at 28% 30%, #8fdcff 0%, rgba(143,220,255,0) 30%),
+    radial-gradient(circle at 74% 70%, #FC734D 0%, #FC734D 12%, rgba(252,115,77,0) 58%),
+    radial-gradient(circle at 72% 24%, #3fc1ff 0%, rgba(63,193,255,0) 42%),
+    radial-gradient(circle at 26% 78%, #0b6fb0 0%, rgba(11,111,176,0) 50%),
+    #0297DE;
+  animation: ai-swirl var(--spin, 8s) linear infinite; }
+.ai-orb .l2 { opacity: .75; background:
+    radial-gradient(circle at 30% 70%, rgba(252,115,77,.95) 0%, rgba(252,115,77,0) 45%),
+    radial-gradient(circle at 70% 34%, rgba(184,236,255,.9) 0%, rgba(184,236,255,0) 34%);
+  animation: ai-swirl calc(var(--spin, 8s) * 1.4) linear infinite reverse; }
+.ai-orb .gloss { position: absolute; inset: 0; border-radius: 9999px; background:
+    radial-gradient(50% 36% at 34% 20%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 70%),
+    radial-gradient(circle at 50% 50%, rgba(2,7,10,0) 60%, rgba(2,7,10,.38) 100%); }
+.ai-orb[data-state="busy"] { --spin: 1.8s; --glow: 10px; }
+.ai-orb[data-state="listening"] { --spin: 4s; --glow: 14px; box-shadow: 0 0 0 1px rgba(255,255,255,.2), 0 0 calc(10px + var(--glow)) rgba(252,115,77,.55); }
+.ai-orb[data-state="speaking"] { --spin: 3s; --glow: 16px; }
+@media (prefers-reduced-motion: reduce) { .ai-orb .l1, .ai-orb .l2 { animation: none; } }
