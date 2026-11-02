@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { animate, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Mic } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,40 +80,12 @@ export default function Index() {
 
   return (
     <DashboardLayout pageTitle="Overview">
-      <div className="mx-auto w-full max-w-[1100px] pt-2 md:pt-6">
-        <motion.header {...rise(0)} className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0">
-            <h1 className="font-serif-display text-[40px] leading-[1.02] text-foreground md:text-[56px]">{greeting()}, Revere.</h1>
-            <p className="mt-3 max-w-[640px] text-[18px] leading-snug text-foreground md:text-[20px]">
-              {today ?? <span className="text-muted-foreground">Checking the city's live feeds…</span>}
-            </p>
-            <p className="mt-1.5 text-[14px] text-muted-foreground">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })}
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <button onClick={() => ask()} className="h-11 rounded-full bg-primary px-5 text-[15px] font-medium text-primary-foreground transition-transform active:scale-[0.97]">Ask a question</button>
-            <button onClick={() => ask({ voice: true })} className="flex h-11 items-center gap-2 rounded-full bg-secondary px-4 text-[15px] font-medium text-foreground transition-colors hover:bg-accent">
-              <Mic className="h-4 w-4" /> Talk
-            </button>
-          </div>
-        </motion.header>
-
-        {err && !s && <p className="mt-10 rounded-[22px] bg-card p-5 text-[15px] text-muted-foreground">The live feeds aren't answering right now. The pages still work; numbers will appear when the connection returns.</p>}
-
-        <div className="mt-12 grid grid-cols-2 gap-4 lg:grid-cols-12">
-          <Tile i={1} rise={rise} to="/weather" label="Weather now" value={s?.weather ? `${Math.round(s.weather.temp)}°` : null}
-            caption={s?.weather ? `High ${Math.round(s.weather.hi)}°, low ${Math.round(s.weather.lo)}° · feels ${Math.round(s.weather.feels)}°` : ""} />
-          <Tile i={2} rise={rise} to="/mbta" label="Next train, Revere Beach" value={s ? mins(rb?.toBowdoin ?? null) : null}
-            caption={s ? `Toward Boston · Wonderland-bound ${mins(rb?.toWonderland ?? null).toLowerCase()}` : ""} />
-          <Tile i={3} rise={rise} to="/police-logs" label="Police calls, 7 days" value={police ? police.calls7d.toLocaleString("en-US") : null}
-            caption={police ? `${fmtDay(police.since)}–${fmtDay(police.through)}${wow != null ? ` · ${Math.abs(wow).toFixed(0)}% ${wow > 0 ? "more" : "fewer"} than the week before` : ""}` : ""} />
-          <Tile i={4} rise={rise} to="/budget" label="School budget, FY2027" value={s?.budget.school ? money(s.budget.school.amount) : null}
-            caption={s?.budget.school ? `The city's largest line · budget p. ${s.budget.school.page}` : ""} />
-        </div>
+      <Hero s={s} today={today} homes={housing[0]} rb={rb} wow={wow} />
+      <div className="mx-auto w-full max-w-[1100px] pt-2">
+        {err && !s && <p className="mt-6 rounded-[22px] bg-card p-5 text-[15px] text-muted-foreground">The live feeds aren't answering right now. The pages still work; numbers will appear when the connection returns.</p>}
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <motion.section {...rise(5)} className="rounded-[22px] bg-card p-5 md:p-6 lg:col-span-9">
+          <motion.section {...rise(5)} className="relative overflow-hidden rounded-[22px] bg-[#0297DE] p-5 text-white [--foreground:0_0%_100%] [--muted-foreground:199_80%_92%] [--brand:0_0%_100%] [--card:199_98%_44%] [--background:201_100%_30%] [--success:152_70%_75%] md:p-6 lg:col-span-9">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-[16px] font-semibold text-foreground">The Blue Line through Revere</h2>
               <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -192,6 +164,91 @@ export default function Index() {
 
 type RiseFn = (i: number) => object;
 
+function CountUp({ to, format = (v: number) => Math.round(v).toLocaleString("en-US") }: { to: number; format?: (v: number) => string }) {
+  const reduce = useReducedMotion();
+  const [v, setV] = useState(reduce ? to : 0);
+  useEffect(() => {
+    if (reduce) { setV(to); return; }
+    const c = animate(0, to, { duration: 1.4, ease: [0.22, 1, 0.36, 1], onUpdate: setV });
+    return () => c.stop();
+  }, [to, reduce]);
+  return <>{format(v)}</>;
+}
+
+function HeroStat({ label, value, sub, align = "left", delay }: { label: string; value: React.ReactNode; sub?: string; align?: "left" | "right"; delay: number }) {
+  return (
+    <motion.div initial={{ opacity: 0, x: align === "left" ? -24 : 24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      className={cn("min-w-0", align === "right" && "lg:text-right")}>
+      <div className="font-serif-display text-[40px] leading-none text-white md:text-[46px]">{value}</div>
+      <div className="mt-1.5 text-[13px] font-medium text-white/85">{label}</div>
+      {sub && <div className="text-[12px] text-white/55">{sub}</div>}
+    </motion.div>
+  );
+}
+
+/** Sunrise over Revere Beach: the beach faces due east, so the light comes up out of the Atlantic. */
+function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string | null; homes?: { value?: Home }; rb?: Station; wow: number | null }) {
+  const reduce = useReducedMotion();
+  const words = `${greeting()},`.split(" ");
+  return (
+    <section className="relative isolate overflow-hidden rounded-[28px] text-white" aria-label="Revere right now">
+      <div className="sunrise" aria-hidden>
+        <div className="glow-blue" /><div className="glow-sun" /><div className="streaks" /><div className="horizon" /><div className="grain" />
+      </div>
+
+      <div className="relative flex min-h-[640px] flex-col px-5 pb-6 pt-6 md:min-h-[700px] md:px-10 md:pt-8">
+        <div className="flex items-center justify-between text-[13px] text-white/70">
+          <span className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-secondary opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-highlight-secondary" /></span>
+            Live in Revere, Massachusetts
+          </span>
+          <span className="tnum">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })}</span>
+        </div>
+
+        <div className="relative mt-10 flex flex-1 flex-col items-center text-center md:mt-14">
+          <h1 className="font-serif-display text-[clamp(52px,8vw,112px)] leading-[0.95] tracking-[-0.02em]">
+            <span className="block">
+              {words.map((w, i) => (
+                <motion.span key={i} className="mr-[0.22em] inline-block" initial={reduce ? false : { opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.1 + i * 0.12, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}>{w}</motion.span>
+              ))}
+            </span>
+            <motion.em className="block italic text-highlight-secondary" initial={reduce ? false : { opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ delay: 0.4, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}>Revere.</motion.em>
+          </h1>
+          <motion.p initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, duration: 0.7 }}
+            className="mt-5 max-w-[560px] text-[17px] leading-relaxed text-white/80 md:text-[19px]">
+            {today ?? "Reading the city's live feeds…"} Ask anything about the city, out loud or by typing.
+          </motion.p>
+
+          <motion.button onClick={() => ask({ voice: true })} initial={reduce ? false : { opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.85, type: "spring", stiffness: 220, damping: 18 }}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
+            className="voice-orb relative mt-9 grid h-[104px] w-[104px] place-items-center rounded-full bg-white/10 ring-1 ring-white/30 backdrop-blur-md" aria-label="Talk to Revere">
+            <span className="flex flex-col items-center gap-1 text-[12px] font-medium text-white/90"><Mic className="h-6 w-6" />Talk</span>
+          </motion.button>
+
+          {/* Live numbers flank the greeting on wide screens, sit below it on phones */}
+          <div className="mt-10 grid w-full grid-cols-2 gap-x-6 gap-y-7 text-left lg:absolute lg:inset-x-0 lg:top-[34%] lg:mt-0 lg:flex lg:justify-between">
+            <div className="space-y-8 contents lg:block">
+              <HeroStat delay={1.0} label="Right now" sub={s?.weather ? `${s.weather.conditions} · feels ${Math.round(s.weather.feels)}°` : ""} value={s?.weather ? <><CountUp to={Math.round(s.weather.temp)} />°</> : "—"} />
+              <HeroStat delay={1.1} label="Next train, Revere Beach" sub="Toward Boston" value={s ? mins(rb?.toBowdoin ?? null) : "—"} />
+            </div>
+            <div className="space-y-8 contents lg:block">
+              <HeroStat align="right" delay={1.0} label="Police calls, 7 days" sub={wow != null ? `${Math.abs(wow).toFixed(0)}% ${wow > 0 ? "more" : "fewer"} than the week before` : ""} value={s?.police ? <CountUp to={s.police.calls7d} /> : "—"} />
+              <HeroStat align="right" delay={1.1} label="Typical home value" sub="Zillow, ZIP 02151" value={homes?.value ? <>$<CountUp to={Math.round(homes.value.value / 1000)} />K</> : "—"} />
+            </div>
+          </div>
+        </div>
+
+        <motion.div initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.25, duration: 0.7 }}
+          className="relative mt-10 flex flex-wrap justify-center gap-2">
+          {["Is the Blue Line on time?", "What happened near the beach this week?", "How much goes to schools?", "Will it rain this weekend?"].map((q) => (
+            <button key={q} onClick={() => ask({ q })} className="rounded-full bg-white/10 px-4 py-2 text-[14px] text-white/90 ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/20">{q}</button>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function Tile({ i, rise, to, label, value, caption }: { i: number; rise: RiseFn; to: string; label: string; value: string | null; caption: string }) {
   return (
     <motion.div {...rise(i)} className="lg:col-span-3">
@@ -241,10 +298,13 @@ function BlueLine({ stations }: { stations?: Station[] }) {
   return (
     <div className="mt-7">
       <div className="relative grid grid-cols-4">
-        <div className="absolute left-[12.5%] right-[12.5%] top-[9px] h-[6px] rounded-full bg-highlight" aria-hidden />
+        <div className="absolute left-[12.5%] right-[12.5%] top-[9px] h-[6px] rounded-full bg-highlight" aria-hidden>
+          <motion.span className="absolute top-1/2 h-[14px] w-9 -translate-y-1/2 rounded-full bg-highlight-secondary shadow-[0_0_18px_hsl(13_97%_64%/0.9)]"
+            animate={{ left: ["0%", "calc(100% - 36px)", "0%"] }} transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }} />
+        </div>
         {list.map((st, i) => (
           <div key={st.id} className="relative flex flex-col items-center px-1 text-center">
-            <motion.span className="relative z-[1] block h-6 w-6 rounded-full border-[5px] border-highlight bg-card"
+            <motion.span className="relative z-[2] block h-6 w-6 rounded-full border-[5px] border-highlight bg-card"
               initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 + i * 0.08, type: "spring", stiffness: 420, damping: 18 }} />
             <span className="mt-3 text-[15px] font-medium leading-tight text-foreground">{st.name}</span>
             <dl className="mt-2 space-y-0.5 text-[13px]">
