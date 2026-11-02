@@ -17,7 +17,7 @@ function Heading({ kicker, title, to, cta }: { kicker: string; title: React.Reac
     <div className="flex items-end justify-between gap-4">
       <div>
         <p className="text-[13px] text-muted-foreground">{kicker}</p>
-        <h2 className="mt-1 font-serif-display text-[30px] leading-[1.05] text-foreground md:text-[38px]">{title}</h2>
+        <h2 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[30px]">{title}</h2>
       </div>
       {to && <Link to={to} className="group flex shrink-0 items-center gap-1 text-[14px] font-medium text-foreground">{cta ?? "Open"}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>}
     </div>
@@ -38,7 +38,7 @@ export function PoliceWeek({ police, wow, calls }: { police: Police; wow: number
   return (
     <motion.section {...inView} className="rounded-[28px] bg-card p-5 md:p-7 lg:col-span-7">
       <Heading kicker={police ? `Revere PD public log · ${fmtDay(police.since)} to ${fmtDay(police.through)}` : "Revere PD public log"}
-        title={<>{police ? police.calls7d.toLocaleString("en-US") : "—"} police calls <em className="italic text-muted-foreground">this week</em></>} to="/police-logs" cta="Full log" />
+        title={<>{police ? police.calls7d.toLocaleString("en-US") : "—"} police calls <span className="text-muted-foreground">this week</span></>} to="/police-logs" cta="Full log" />
       {wow != null && <p className="mt-2 text-[15px] text-foreground/85">{Math.abs(wow).toFixed(0)}% {wow > 0 ? "more" : "fewer"} than the week before. Most were traffic stops and requests for help, not crimes.</p>}
 
       <div className="mt-6 grid gap-6 md:grid-cols-[1.1fr_1fr]">
@@ -115,7 +115,7 @@ export function WeatherField({ w }: { w: Weather }) {
         <div>
           <p className="text-[13px] text-white/75">Revere weather</p>
           <div className="mt-1 flex items-center gap-4">
-            <span className="font-serif-display text-[88px] leading-[0.85]">{w ? Math.round(w.temp) : "—"}°</span>
+            <span className="figure text-[92px] leading-[0.85]">{w ? Math.round(w.temp) : "—"}°</span>
             {w && <WeatherIcon conditions={w.conditions} night={(() => { const h = Number(new Date().toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: "America/New_York" })); return h < 6 || h >= 18; })()} className="h-16 w-16 text-[#ffd79a]" />}
           </div>
           <p className="mt-2 text-[16px]">{w?.conditions ?? "Loading"}{w ? ` · feels ${Math.round(w.feels)}°` : ""}</p>
@@ -144,12 +144,12 @@ export function WeatherField({ w }: { w: Weather }) {
           <div className="mt-auto grid grid-cols-2 gap-3 pt-6">
             <div className="rounded-2xl bg-black/20 p-4">
               <p className="text-[12px] text-white/70">Best beach day</p>
-              <p className="mt-1 font-serif-display text-[26px] leading-none">{new Date(best.date + "T12:00").toLocaleDateString("en-US", { weekday: "long" })}</p>
+              <p className="mt-1 text-[22px] font-semibold leading-none tracking-[-0.02em]">{new Date(best.date + "T12:00").toLocaleDateString("en-US", { weekday: "long" })}</p>
               <p className="mt-1 text-[13px] text-white/80">{Math.round(best.hi)}°, {best.conditions.toLowerCase()}</p>
             </div>
             <div className="rounded-2xl bg-black/20 p-4">
               <p className="text-[12px] text-white/70">Umbrella?</p>
-              <p className="mt-1 font-serif-display text-[26px] leading-none">{wet.length ? "Yes" : "Not needed"}</p>
+              <p className="mt-1 text-[22px] font-semibold leading-none tracking-[-0.02em]">{wet.length ? "Yes" : "Not needed"}</p>
               <p className="mt-1 text-[13px] text-white/80">{wet.length ? `${wet.map((d) => new Date(d.date + "T12:00").toLocaleDateString("en-US", { weekday: "short" })).join(", ")}: ${Math.max(...wet.map((d) => d.precipprob))}% chance` : "No rain likely in the next 4 days"}</p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export function MoneyBar({ depts, school }: { depts: Dept[]; school: { amount: n
   return (
     <motion.section {...inView} className="mt-4 rounded-[28px] bg-card p-5 md:p-7">
       <Heading kicker="FY2027 adopted budget · every figure links to its page"
-        title={<>Where <em className="italic text-highlight-secondary">{total ? money(total) : "the money"}</em> goes</>} to="/budget" cta="Explore the budget" />
+        title={<>Where <span className="figure text-highlight-secondary">{total ? money(total) : "the money"}</span> goes</>} to="/budget" cta="Explore the budget" />
       <p className="mt-2 max-w-[720px] text-[15px] text-foreground/85">
         That's the {depts.length} city department budgets added together. Schools are funded separately: {school ? <a href={`${school.url}`} target="_blank" rel="noreferrer" className="font-medium text-foreground underline decoration-highlight-secondary underline-offset-4">{money(school.amount)} (p. {school.page})</a> : "—"}.
       </p>
@@ -218,7 +218,7 @@ export function HomesCard({ housing }: { housing: HomeRow[] }) {
   return (
     <motion.section {...inView} className="rounded-[28px] bg-card p-5 md:p-7 lg:col-span-7">
       <Heading kicker={rv?.value ? `Zillow estimates · ${new Date(rv.value.month + "T12:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}` : "Zillow estimates"}
-        title={<>A typical Revere home: <em className="italic text-highlight-secondary">{rv?.value ? `$${Math.round(rv.value.value / 1000)}K` : "—"}</em></>} to="/housing" cta="Housing" />
+        title={<>A typical Revere home: <span className="figure text-highlight-secondary">{rv?.value ? `$${Math.round(rv.value.value / 1000)}K` : "—"}</span></>} to="/housing" cta="Housing" />
       {rv?.rent && <p className="mt-2 text-[15px] text-foreground/85">Typical rent is ${rv.rent.value.toLocaleString("en-US")} a month. Affording it at 30% of income takes about ${Math.round((rv.rent.value * 12) / 0.3 / 1000)}K a year.</p>}
       <div className="mt-6 space-y-3">
         {rows.map((r, i) => {
@@ -252,7 +252,7 @@ export function AskPostcard() {
         className="absolute inset-0 -z-20 h-full w-full object-cover" initial={{ scale: 1.08 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ duration: 2.2, ease: "easeOut" }} />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(2,7,10,0.15)_0%,rgba(2,7,10,0.65)_45%,rgba(2,7,10,0.95)_100%)]" />
       <p className="text-[13px] text-white/75">The Cyclone, Revere Beach Boulevard, 1940s</p>
-      <h2 className="mt-1 font-serif-display text-[34px] leading-[1.05]">Ask the way you'd <em className="italic text-highlight-secondary">ask a neighbor</em></h2>
+      <h2 className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.02em]">Ask the way you'd <span className="figure text-highlight-secondary">ask a neighbor</span></h2>
       <div className="mt-5 grid gap-2">
         {qs.map((q) => (
           <button key={q} onClick={() => ask(q)} className="group flex min-h-[48px] items-center justify-between rounded-2xl bg-white/10 px-4 text-left text-[15px] ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/20">

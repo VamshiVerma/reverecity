@@ -105,7 +105,7 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
               <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#0297DE] opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-[#0297DE]" /></span>
               Live MBTA departures{asOf ? ` · updated ${asOf.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}
             </p>
-            <h2 className="mt-1 font-serif-display text-[34px] leading-none md:text-[44px]">Next train from <em className="italic text-highlight-secondary">{station.name}</em></h2>
+            <h2 className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.02em] md:text-[34px]">Next train from <span className="text-highlight-secondary">{station.name}</span></h2>
           </div>
           <Link to="/mbta" className="text-[14px] font-medium text-white/85 hover:text-white">All stops & buses →</Link>
         </div>
@@ -139,15 +139,15 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
                 <div className="mt-3 flex min-h-[72px] items-end gap-3">
                   <AnimatePresence mode="popLayout">
                     <motion.div key={first ?? "none"} initial={reduce ? false : { y: 18, opacity: 0, filter: "blur(6px)" }} animate={{ y: 0, opacity: 1, filter: "blur(0px)" }} exit={{ y: -18, opacity: 0 }}
-                      className={cn("flex items-baseline gap-2 font-serif-display leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>
+                      className={cn("figure flex items-baseline gap-2 leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>
                       {deps == null ? <span className="text-[56px]">…</span>
                         : first == null ? <span className="text-[44px] text-white/60">No trains</span>
                         : first === 0 ? (
-                          <span className="flex items-center gap-3 text-[52px]">
+                          <span className="flex items-center gap-3 text-[46px] tracking-[-0.03em]">
                             <span className="relative flex h-4 w-4"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60 motion-reduce:hidden" /><span className="relative h-4 w-4 rounded-full bg-current" /></span>
                             Boarding
                           </span>
-                        ) : (<><span className="tnum text-[72px]">{first}</span><span className="font-sans text-[18px] text-white/75">min</span></>)}
+                        ) : (<><span className="text-[76px]">{first}</span><span className="font-sans text-[18px] text-white/75">min</span></>)}
                     </motion.div>
                   </AnimatePresence>
                 </div>

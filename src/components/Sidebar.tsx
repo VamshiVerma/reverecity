@@ -139,7 +139,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_25%,rgba(2,7,10,0.92))]" />
           <span className="absolute bottom-2.5 left-3 right-3 text-white">
-            <span className="block font-serif-display text-[18px] leading-tight">America's first <em className="italic text-highlight-secondary">public beach</em></span>
+            <span className="block text-[15px] font-semibold leading-tight">America's first public beach</span>
             <span className="block text-[11.5px] text-white/70">Revere Beach, opened 1896</span>
           </span>
         </NavLink>

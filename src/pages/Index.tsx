@@ -120,7 +120,7 @@ function HeroStat({ label, value, sub, align = "left", delay }: { label: string;
   return (
     <motion.div initial={{ opacity: 0, x: align === "left" ? -24 : 24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className={cn("min-w-0", align === "right" && "lg:text-right")}>
-      <div className="font-serif-display text-[40px] leading-none text-white md:text-[46px]">{value}</div>
+      <div className="figure text-[40px] leading-none text-white md:text-[46px]">{value}</div>
       <div className="mt-1.5 text-[13px] font-medium text-white/85">{label}</div>
       {sub && <div className="text-[12px] text-white/55">{sub}</div>}
     </motion.div>
