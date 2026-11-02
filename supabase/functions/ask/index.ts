@@ -133,8 +133,7 @@ async function departmentFigures(q: string) {
 }
 const money = (v: number | null) => v == null ? "—" : "$" + Math.round(v).toLocaleString("en-US");
 
-async function budgetContext(q: string) {
-  const emb = await embedder.run(q, { mean_pool: true, normalize: true });
+async function budgetContext(q: string, emb: number[]) {
   const ftsQuery = q.replace(/[^\w\s$.]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !/^(the|and|for|how|much|what|does|city|revere|spend|spending|on|is|are|was)$/i.test(w)).join(" or ");
   const { data, error } = await supabase.rpc("match_doc_chunks", {
     query_embedding: Array.from(emb as number[]), query_text: ftsQuery || q, match_count: 7, doc_filter: null,
@@ -210,6 +209,69 @@ async function mbtaContext(q = "") {
   return { alerts, preds: preds.slice(0, 12), stations: stations.map(([, n]) => n), wantDir };
 }
 
+// ---------- routing by meaning ----------
+type Intent = "civic" | "police_activity" | "crime_trend" | "budget" | "revenue" | "transit" | "weather" | "housing" | "smalltalk";
+async function route(emb: number[], q: string) {
+  const { data } = await supabase.rpc("match_intent", { query_embedding: emb, k: 8 });
+  const best = new Map<string, number>();
+  for (const r of (data || []) as any[]) best.set(r.intent, Math.max(best.get(r.intent) ?? 0, r.similarity));
+  const ranked = [...best.entries()].sort((a, b) => b[1] - a[1]);
+  const [t1, s1] = ranked[0] ?? ["", 0];
+  const chosen = new Set<Intent>();
+  if (s1 >= 0.84) {
+    chosen.add(t1 as Intent);
+    for (const [t, sc] of ranked.slice(1, 3)) if (sc >= 0.86 && sc >= s1 - 0.012) chosen.add(t as Intent);
+  }
+  // Specific words that leave no doubt.
+  const s = q.toLowerCase();
+  if (/\b(train|blue line|bus|mbta|wonderland station|commute)\b/.test(s) && !chosen.size) chosen.add("transit");
+  if (/\b(rent|home prices?|housing|mortgage)\b/.test(s) && !chosen.size) chosen.add("housing");
+  if (/\b(budget|fy ?20\d\d|appropriation)\b/.test(s)) chosen.add("budget");
+  if (/\b(who is|who's|phone number|contact|address of|where is city hall|hours)\b/.test(s) && !/\b(train|bus)\b/.test(s)) chosen.add("civic");
+  if (/^(hi|hello|hey|thanks|thank you|yo|good (morning|afternoon|evening))\b[\s!.?]*$/i.test(q.trim())) { chosen.clear(); chosen.add("smalltalk"); }
+  return { intents: chosen, top: ranked.slice(0, 3).map(([t, v]) => `${t}:${v.toFixed(3)}`) };
+}
+
+// ---------- city directory (from the adopted budget books) ----------
+async function civicContext(q: string) {
+  const { data } = await supabase.from("civic_directory").select("dept,name,title,phone,location,keywords,doc_id,page,source_url");
+  const words = q.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !/^(the|who|what|where|how|does|for|and|can|get|you|revere|city|about|call|contact|number|phone|reach)$/.test(w));
+  const scored = ((data || []) as any[]).map((r) => {
+    const hay = `${r.dept} ${r.title} ${r.keywords}`.toLowerCase();
+    let sc = 0;
+    for (const w of words) if (hay.includes(w)) sc += hay.split(/\s+/).includes(w) ? 2 : 1;
+    if (/mayor/.test(q.toLowerCase()) && r.dept === "Mayor") sc += 5;
+    return { ...r, sc };
+  }).filter((r) => r.sc > 0).sort((a, b) => b.sc - a.sc);
+  // A second entry only when it's nearly as relevant as the first.
+  return scored.length > 1 && scored[1].sc >= scored[0].sc - 1 ? scored.slice(0, 2) : scored.slice(0, 1);
+}
+
+// ---------- crime trend: last 28 days vs the 28 before ----------
+async function crimeTrend() {
+  const { data: l } = await supabase.from("police_logs").select("log_date").order("log_date", { ascending: false }).limit(1);
+  const latest = l?.[0]?.log_date as string | undefined;
+  if (!latest) return null;
+  const d = (n: number) => new Date(new Date(latest + "T12:00:00").getTime() - n * 864e5).toISOString().slice(0, 10);
+  // Compare equal windows that the log actually covers (posted logs can have gaps).
+  const { data: daily } = await supabase.rpc("police_daily");
+  const have = new Set(((daily || []) as any[]).map((x) => String(x.log_date).slice(0, 10)));
+  let covered = 0;
+  for (let i = 0, miss = 0; i < 120; i++) { if (have.has(d(i))) { covered = i + 1; miss = 0; } else if (++miss > 2) break; }
+  const w = Math.max(7, Math.min(28, Math.floor(covered / 2)));
+  const [cur, prev, a1, a0] = await Promise.all([
+    supabase.rpc("police_stats", { since: d(w - 1), until: latest, streets: null }),
+    supabase.rpc("police_stats", { since: d(2 * w - 1), until: d(w), streets: null }),
+    supabase.from("police_logs").select("*", { count: "exact", head: true }).eq("action_category", "ARREST").gte("log_date", d(w - 1)).lte("log_date", latest),
+    supabase.from("police_logs").select("*", { count: "exact", head: true }).eq("action_category", "ARREST").gte("log_date", d(2 * w - 1)).lte("log_date", d(w)),
+  ]);
+  const c = (cur.data || {}) as any, p = (prev.data || {}) as any;
+  const pc = new Map(((p.by_category || []) as any[]).map((x) => [x.k, x.n]));
+  const changes = ((c.by_category || []) as any[]).map((x) => ({ k: x.k, now: x.n, before: pc.get(x.k) ?? 0 }))
+    .filter((x) => x.now + x.before >= 8).map((x) => ({ ...x, diff: x.now - x.before })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  return { days: w, since: d(w - 1), latest, prevSince: d(2 * w - 1), prevUntil: d(w), total: c.total ?? 0, prevTotal: p.total ?? 0, arrests: a1.count ?? 0, prevArrests: a0.count ?? 0, changes: changes.slice(0, 4), sources: c.sources || [] };
+}
+
 // ---------- LLM ----------
 const SYSTEM = `You are the Revere City assistant for residents of Revere, Massachusetts.
 Answer using ONLY the CONTEXT provided. Be warm, plain-spoken and specific: give numbers, dates, street names and times.
@@ -277,16 +339,20 @@ Deno.serve(async (req) => {
     const q = String(question).slice(0, 600).trim();
     if (!q) return json({ error: "empty question" }, 400);
 
-    let it = intents(q);
-    if (!it.police && !it.budget && !it.weather && !it.mbta && !it.housing) it = { police: false, budget: true, weather: false, mbta: false, housing: false }; // documents are the default knowledge base
+    const emb = Array.from(await embedder.run(q, { mean_pool: true, normalize: true }) as number[]);
+    const r = await route(emb, q);
+    const want = (i: Intent) => r.intents.has(i);
+    const wantsMoney = want("budget") || want("revenue");
 
-    const [police, budget, weather, mbta, depts, housing] = await Promise.all([
-      it.police ? policeContext(q) : null,
-      it.budget ? budgetContext(q).catch(() => []) : null,
-      it.weather ? weatherContext() : null,
-      it.mbta ? mbtaContext(q) : null,
-      it.budget ? departmentFigures(q).catch(() => []) : [],
-      it.housing ? housingContext().catch(() => null) : null,
+    const [police, budget, weather, mbta, depts, housing, civic, trend] = await Promise.all([
+      want("police_activity") ? policeContext(q) : null,
+      wantsMoney ? budgetContext(q, emb).catch(() => []) : null,
+      want("weather") ? weatherContext() : null,
+      want("transit") ? mbtaContext(q) : null,
+      want("budget") ? departmentFigures(q).catch(() => []) : [],
+      want("housing") ? housingContext().catch(() => null) : null,
+      want("civic") ? civicContext(q).catch(() => []) : [],
+      want("crime_trend") ? crimeTrend().catch(() => null) : null,
     ]);
 
     const sources: Source[] = [];
@@ -348,6 +414,15 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
       cards.push({ type: "housing", month: housing.month, rows: housing.rows });
     }
 
+    if (civic && civic.length) {
+      ctx.push(`CITY DIRECTORY (from the City of Revere adopted budget books):\n${civic.map((c: any) => `${c.dept}: ${c.name}${c.title ? `, ${c.title}` : ""}${c.phone ? `, ${c.phone}` : ""}${c.location ? `, ${c.location}` : ""} (${c.doc_id === "fy2027-budget" ? "FY2027 Adopted Budget" : "FY2026 Budget"}, p. ${c.page})`).join("\n")}`);
+      for (const c of civic) sources.push({ kind: "budget", label: c.doc_id === "fy2027-budget" ? "FY2027 Adopted Budget" : "FY2026 Budget", detail: `p. ${c.page} · ${c.dept}`, url: `${c.source_url}#page=${c.page}` });
+    }
+    if (trend) {
+      ctx.push(`POLICE CALL TRENDS (Revere PD dispatch log): ${trend.total} calls ${trend.since} to ${trend.latest} vs ${trend.prevTotal} in the 28 days before. Arrests ${trend.arrests} vs ${trend.prevArrests}. Biggest changes: ${trend.changes.map((x: any) => `${pretty(x.k)} ${x.before}->${x.now}`).join("; ")}. The log lists calls, not confirmed crimes.`);
+      sources.push({ kind: "police", label: "Revere PD public log", detail: `${fmtShort(trend.prevSince)}–${fmtShort(trend.latest)}`, url: trend.sources[trend.sources.length - 1] });
+    }
+
     const seenSrc = new Set<string>();
     const uniqSources = sources.filter((x) => { const k = x.label + "|" + (x.detail ?? "") + "|" + (x.url ?? ""); if (seenSrc.has(k)) return false; seenSrc.add(k); return true; }).slice(0, 8);
     sources.length = 0; sources.push(...uniqSources);
@@ -358,6 +433,37 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
     if (!answer) {
       // Grounded answer without an LLM: honest, structured, sourced.
       const parts: string[] = [];
+      if (want("smalltalk")) {
+        parts.push(/thank/i.test(q) ? "You're welcome. Ask me anything else about Revere." :
+          "Hi! I can answer questions about Revere using the city's own data:\n- **Trains and buses**: \"When's the next train from Beachmont?\"\n- **Police calls**: \"What happened on Broadway this week?\"\n- **Safety trends**: \"Is crime going up?\"\n- **City money**: \"How much goes to schools?\"\n- **Who to contact**: \"Who is the mayor?\"\n- **Weather and housing**: \"Will it rain this weekend?\" \"What's rent like?\"");
+      }
+      for (const c of civic || []) {
+        const src = `*${c.doc_id === "fy2027-budget" ? "FY2027 Adopted Budget" : "FY2026 Budget"}, p. ${c.page}*`;
+        parts.push(c.dept === "Mayor" ? `**The Mayor of Revere is ${c.name.replace(/\.$/, "")}.** ${c.title.replace(/^Mayor ?/, "")}`.trim() : `**${c.dept}: ${c.name}**${c.title ? `, ${c.title}` : ""}.`);
+        if (c.phone || c.location) parts.push(`- ${[c.phone ? `Phone ${c.phone}` : "", c.location || ""].filter(Boolean).join(" · ")}`);
+        parts.push(`- Source: ${src}. Staff can change; check revere.org for the latest.`);
+      }
+      if (want("budget") && /\b(school|schools|education|rps)\b/i.test(q)) {
+        const R = "https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf";
+        parts.push(`**Revere Public Schools — FY2027 appropriation: $132,944,577** (up 1.0% from $131,567,036 in FY2026). It's the largest single line in the city budget.`);
+        parts.push(`- Source: *FY2027 Adopted Budget, p. 172*`);
+        sources.push({ kind: "budget", label: "FY2027 Adopted Budget", detail: "p. 172 · School Department", url: `${R}#page=172` });
+      }
+      if (want("revenue")) {
+        const R = "https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf";
+        parts.push(`**Property taxes are Revere's biggest source of money: about $133.2M projected for FY2027**, up from $126.5M in FY2026 (FY2027 Adopted Budget, p. 237).`);
+        parts.push(`- Where the general fund comes from (FY2027 estimate): property taxes 47%, state aid 44%, local receipts 8%, water/sewer indirect costs 1% (p. 228).`);
+        parts.push(`- Largest local receipts (FY2027 projected): motor vehicle excise $7.5M, licenses & permits $3.7M, hotel excise $3.4M, investment income $3.0M, fines $2.2M, meals tax $1.25M (pp. 237–241).`);
+        parts.push(`- Reserves: certified free cash $2.79M (June 30, 2025); stabilization fund about $12.8M projected for FY2027 (pp. 230–231).`);
+        sources.push({ kind: "budget", label: "FY2027 Adopted Budget", detail: "pp. 228–242 · revenue", url: `${R}#page=228` });
+      }
+      if (trend) {
+        const pct = trend.prevTotal ? ((trend.total - trend.prevTotal) / trend.prevTotal) * 100 : 0;
+        parts.push(`**Police calls are ${Math.abs(pct) < 3 ? "about the same" : pct > 0 ? `up ${pct.toFixed(0)}%` : `down ${Math.abs(pct).toFixed(0)}%`}** over the latest ${trend.days} days of the log (${trend.total.toLocaleString("en-US")} calls, ${fmtShort(trend.since)}–${fmtShort(trend.latest)}) compared with the ${trend.days} days before (${trend.prevTotal.toLocaleString("en-US")} calls, ${fmtShort(trend.prevSince)}–${fmtShort(trend.prevUntil)}).`);
+        parts.push(`- Arrests: ${trend.arrests} vs ${trend.prevArrests}.`);
+        for (const x of trend.changes) parts.push(`- ${pretty(x.k)}: ${x.before} → ${x.now} (${x.diff >= 0 ? "+" : ""}${x.diff})`);
+        parts.push(`- The dispatch log counts calls officers responded to, not confirmed crimes. Full detail on the Police log page.`);
+      }
       if (police) {
         parts.push(`**${police.total.toLocaleString("en-US")} police calls${police.streets.length ? " around " + police.streets.slice(0, 3).map(title).join(", ") + (police.streets.length > 3 ? ` +${police.streets.length - 3} more` : "") : " in Revere"}** from ${fmtShort(police.since)} to ${fmtShort(police.latestDate)}, the most recent log the police department has posted.`);
         if (police.byHour.length) parts.push(`Busiest around ${police.byHour.slice(0, 3).map(([h]) => `${Number(h) % 12 || 12} ${Number(h) < 12 ? "AM" : "PM"}`).join(", ")}. Recent calls worth knowing about:`);
@@ -400,17 +506,17 @@ Next Blue Line departures: ${mbta.preds.length ? mbta.preds.map((p: any) => `${p
         if (cur.payroll != null) parts.push(`- Payroll ${money(cur.payroll)} · other expenses ${money(cur.non_payroll)}`);
         parts.push(`- Source: *${cur.doc_title}, p. ${cur.page}*`);
       }
-      if (budget && budget.length && !(depts && depts.length)) {
+      if (budget && budget.length && !(depts && depts.length) && !want("revenue") && !/\b(school|schools|education|rps)\b/i.test(q)) {
         parts.push(`**From the city budget documents** — the most relevant passages:`);
         budget.slice(0, 3).forEach((c: any) => {
           const snippet = c.content.split("\n").filter((l: string) => /\d/.test(l)).slice(0, 4).join("\n") || c.content.slice(0, 300);
           parts.push(`> *${c.doc_title}, p. ${c.page}${c.section ? " — " + title(c.section) : ""}*\n> ${snippet.replace(/\n/g, "\n> ")}`);
         });
       }
-      answer = parts.join("\n") || "I couldn't find city data matching that question yet.";
+      answer = parts.join("\n") || "I don't have that in my Revere data yet. I can help with **trains and buses, weather, police calls and safety trends, the city budget and taxes, housing costs**, and **who to contact at City Hall**. For anything else, try revere.org or the Mayor's office at 781-286-8111.";
     }
 
-    return json({ answer, sources, cards, mode: gen ? "llm" : "grounded", model: gen?.model ?? null, ms: Date.now() - started });
+    return json({ answer, sources, cards, mode: gen ? "llm" : "grounded", model: gen?.model ?? null, route: { intents: [...r.intents], top: r.top }, ms: Date.now() - started });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

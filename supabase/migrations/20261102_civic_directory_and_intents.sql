@@ -1,0 +1,37 @@
+create table if not exists public.civic_directory (
+  id bigserial primary key, dept text not null, name text, title text, phone text, location text, keywords text,
+  doc_id text not null, page int not null, source_url text not null);
+alter table public.civic_directory enable row level security;
+drop policy if exists "public read civic_directory" on public.civic_directory;
+create policy "public read civic_directory" on public.civic_directory for select using (true);
+truncate public.civic_directory;
+insert into public.civic_directory (dept,name,title,phone,location,keywords,doc_id,page,source_url) values
+('City Council','Ashley Melnik','Clerk of Council','781-286-8160','Revere City Hall, First Floor, 281 Broadway, Revere, 02151','city council councilor councillors council meeting','fy2026-budget',85,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Mayor','Patrick M. Keefe Jr.','Mayor','781-286-8111','Revere City Hall, First Floor, 281 Broadway, Revere, 02151','mayor mayors office keefe city hall','fy2026-budget',90,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Human Resources','Lina Tramelli','Director','781-286-8202','Revere City Hall, 2nd Floor, 281 Broadway, Revere, 02151','jobs working for the city hiring human resources hr employment','fy2026-budget',97,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Purchasing','Michael Piccardi','Purchasing Agent','781-286-8157','Revere City Hall, First Floor, 281 Broadway, Revere, 02151','bids procurement purchasing vendors','fy2026-budget',118,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Information Technology','Jorge Pazos','Director','781-286-8140','Revere City Hall, Second Floor, 281 Broadway, Revere, 02151','it technology wifi website','fy2026-budget',123,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('City Clerk','Ashley Melnik','City Clerk','781-286-8160','Revere City Hall, First Floor, 281 Broadway, Revere, 02151','birth certificate death certificate marriage license dog license records clerk','fy2026-budget',145,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Election Commission','Danielle Pietrantonio','Election Commissioner','781-286-8200','Revere City Hall, First Floor, 281 Broadway, Revere, MA 02151','vote voting register to vote elections polling ballot census','fy2026-budget',150,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Zoning Board of Appeals','Ashley Melnik','Clerk to the Zoning Board of Appeals',null,'Office of the City Clerk, Revere City Hall, First Floor, 281 Broadway, Revere, 02151','zoning variance board of appeals','fy2026-budget',163,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Engineering','Nicholas Rystrom','P.E.','781-286-8152','Department of Public Works, 319 Charger St., Revere, 02151','engineering sidewalk construction permits street opening','fy2026-budget',177,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Police Department','Maria LaVita','Chief of Police','781-286-8326','Revere Police Department, 400 Revere Beach Parkway, Revere, MA','police chief cops non-emergency police station','fy2026-budget',183,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Fire Department','James E. Cullen','Acting Fire Chief','781-286-8365','Revere Fire Department, 400 Broadway, Revere, 02151','fire chief firefighters fire station','fy2026-budget',207,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Parking Control','Zachary Babo','Director of Parking','781-629-2542','300 Broadway, Main Floor - Suite #2, Revere, 02151','parking ticket parking permit resident sticker meters tow','fy2026-budget',229,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Department of Public Works','Christopher Ciaramella','Superintendent Public Works','781-286-8145','319 Charger Street, Revere, MA 02151','trash garbage recycling pickup bulk items potholes snow plowing streets dpw water sewer street lights','fy2026-budget',235,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Public Health Initiatives','Lauren Buck','Director of Public Health',null,'281 Broadway, Revere, 02151','public health board of health vaccines clinic restaurant inspection','fy2026-budget',250,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Elder Affairs','Debra Peczka DiGiulio','Director','781-286-8156','Rossetti-Cowan Senior Center, 25 Winthrop Avenue, Revere, 02151','seniors senior center elderly elder affairs older residents','fy2026-budget',258,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Library','Diana Luongo','Director','781-286-8380','Revere Public Library, 179 Beach Street, Revere, 02151','library books library card','fy2026-budget',283,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Parks & Recreation','Michael Hinojosa','Director','781-286-8190','Revere Youth Center, 150 Beach St, Revere, 02151','parks recreation youth programs playgrounds sports summer camp','fy2026-budget',289,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2026-Budget_digital_REVERE_MA.pdf'),
+('Mayor','Patrick M. Keefe Jr.','Mayor (elected April 2023; term expires January 2028)','781-286-8111','Revere City Hall, First Floor, 281 Broadway, Revere, MA 02151','mayor who runs the city keefe','fy2027-budget',6,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf'),
+('Chief Financial Officer','Richard Viscay','Chief Financial Officer / Budget Director and City Auditor (appointed by the Mayor)',null,'Revere City Hall, 281 Broadway','cfo budget director auditor finance','fy2027-budget',6,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf'),
+('Treasurer/Collector','Cathy Bowden','Treasurer/Collector (appointed by the Mayor)',null,'Revere City Hall, 281 Broadway','treasurer collector pay taxes excise bills','fy2027-budget',6,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf'),
+('Revere Public Schools','Dr. Dianne Kelly','Superintendent of Schools',null,null,'superintendent schools school district rps','fy2027-budget',170,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf'),
+('School Committee','Jacqueline Monterroso','Chair of the School Committee (the Mayor also sits on the committee)',null,null,'school committee chair','fy2027-budget',170,'https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf');
+create table if not exists public.intent_exemplars (id bigserial primary key, intent text not null, text text not null, embedding vector(384));
+alter table public.intent_exemplars enable row level security;
+create or replace function public.match_intent(query_embedding vector(384), k int default 5)
+returns table(intent text, text text, similarity float) language sql stable as $$
+  select intent, text, 1 - (embedding <=> query_embedding) as similarity from public.intent_exemplars
+  where embedding is not null order by embedding <=> query_embedding limit k;
+$$;

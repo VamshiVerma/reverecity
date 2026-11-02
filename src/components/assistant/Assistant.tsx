@@ -6,7 +6,7 @@ import {
   Square, TrainFront, Volume2, VolumeX, X, Check, Radio,
 } from "lucide-react";
 import { askCity, type AskCard, type AskSource, type ChatTurn } from "@/lib/cityApi";
-import { useVoice } from "./useVoice";
+import { unlockSpeech, useVoice } from "./useVoice";
 import { cn } from "@/lib/utils";
 
 type Msg = {
@@ -110,7 +110,7 @@ export default function Assistant() {
       setOpen(true);
       const d = (e as CustomEvent<{ q?: string; voice?: boolean }>).detail;
       if (d?.q) setTimeout(() => sendRef.current?.(d.q!), 350);
-      else if (d?.voice) setTimeout(() => voiceRef.current?.startListening(), 400);
+      else if (d?.voice) voiceRef.current?.startListening(); // must run inside the tap for Safari
     };
     window.addEventListener("revere:ask", onAsk);
     return () => window.removeEventListener("revere:ask", onAsk);
@@ -173,7 +173,7 @@ export default function Assistant() {
               animate={{ x: 0, opacity: 1, scale: 1 }}
               exit={{ x: 40, opacity: 0, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 32 }}
-              className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-background md:inset-y-3 md:left-auto md:right-3 md:w-[540px] md:rounded-[24px] md:shadow-[0_30px_80px_rgba(0,0,0,0.9)]"
+              className="fixed inset-x-0 top-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-background md:inset-y-3 md:left-auto md:right-3 md:h-auto md:w-[540px] md:rounded-[24px] md:shadow-[0_30px_80px_rgba(0,0,0,0.9)]"
             >
 
               {/* Header */}
@@ -182,10 +182,10 @@ export default function Assistant() {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[16px] font-semibold leading-tight text-foreground">Ask Revere</h2>
                   <p className="truncate text-[13px] text-muted-foreground">
-                    {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Speaking…" : orbState === "busy" ? "Looking it up…" : "Every answer links to where it came from"}
+                    {orbState === "listening" ? "Listening…" : orbState === "speaking" ? "Speaking…" : orbState === "busy" ? "Looking it up…" : "Answers link to their sources"}
                   </p>
                 </div>
-                <IconBtn label={readAloud ? "Stop reading answers aloud" : "Read answers aloud"} active={readAloud} onClick={() => { setReadAloud((v) => !v); voice.stopSpeaking(); }}>
+                <IconBtn label={readAloud ? "Stop reading answers aloud" : "Read answers aloud"} active={readAloud} onClick={() => { unlockSpeech(); setReadAloud((v) => !v); voice.stopSpeaking(); }}>
                   {readAloud ? <Volume2 /> : <VolumeX />}
                 </IconBtn>
                 <IconBtn label="New conversation" onClick={reset}><Plus /></IconBtn>
@@ -207,7 +207,7 @@ export default function Assistant() {
               </div>
 
               {/* Composer */}
-              <div className="relative border-t border-border p-4">
+              <div className="relative border-t border-border p-3 pb-[max(12px,env(safe-area-inset-bottom))] md:p-4">
                 {voice.error && (
                   <div className="mb-2 flex items-center justify-between rounded-2xl bg-secondary px-4 py-2.5 text-[13px] text-warning">
                     {voice.error}
@@ -219,7 +219,7 @@ export default function Assistant() {
                     <motion.div key="listen" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                       className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2">
                       <Wave level={voice.level} />
-                      <p className="min-w-0 flex-1 truncate text-[16px] text-foreground">{voice.interim || <span className="text-muted-foreground">Listening. Ask your question…</span>}</p>
+                      <p className="min-w-0 flex-1 truncate text-[16px] text-foreground">{voice.interim || <span className="text-muted-foreground">{voice.hearing ? "Go on, I'm listening…" : "Listening. Ask your question…"}</span>}</p>
                       <button onClick={voice.stopListening} className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Stop listening">
                         <Square className="h-4 w-4 fill-current" />
                       </button>
@@ -259,7 +259,7 @@ export default function Assistant() {
                     <input type="checkbox" className="sr-only" checked={handsFree} onChange={(e) => { setHandsFree(e.target.checked); if (e.target.checked) { setReadAloud(true); voice.startListening(); } }} />
                     Talk back and forth
                   </label>
-                  <span className="truncate">Press / anywhere to ask</span>
+                  <span className="hidden truncate md:inline">Press / anywhere to ask</span>
                 </div>
               </div>
             </motion.section>
@@ -350,7 +350,7 @@ function Message({ m, onSpeak, speaking, onStop }: { m: Msg; onSpeak: (t: string
         )}
         {!m.error && (
           <div className="mt-3 flex gap-1 text-muted-foreground">
-            <button onClick={() => (speaking ? onStop() : onSpeak(m.content))} className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] transition hover:bg-secondary hover:text-foreground">
+            <button onClick={() => { unlockSpeech(); speaking ? onStop() : onSpeak(m.content); }} className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] transition hover:bg-secondary hover:text-foreground">
               {speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3.5 w-3.5" />} {speaking ? "Stop" : "Listen"}
             </button>
             <button onClick={() => { navigator.clipboard?.writeText(m.content); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] transition hover:bg-secondary hover:text-foreground">
