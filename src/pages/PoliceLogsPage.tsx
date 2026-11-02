@@ -1,645 +1,309 @@
-import { useState, useEffect , useMemo} from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Shield,
-  Search,
-  RefreshCw,
-  Calendar,
-  TrendingUp,
-  MapPin,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  FileText
-} from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
-import PoliceLogsService, { CallTypeBreakdown, DailyStats } from '@/services/policeLogsService';
-import PoliceLogsAutoSync from '@/services/policeLogsAutoSync';
-import PoliceLogsAnalyticsService, { AnalyticsData } from '@/services/policeLogsAnalytics';
-import PoliceLogsAnalytics from '@/components/PoliceLogsAnalytics';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ExternalLink, Search, X } from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { catLabel, catTone, plainAction, plainReason, street, time12, CATEGORY } from "@/lib/plain";
+import { cn } from "@/lib/utils";
 
-const COLORS = ['#2f7fb3', '#0297DE', '#d9572f', '#ffc2ad', '#c8d3da', '#5cc6ff', '#2f7fb3', '#ffc2ad'];
+// Only public, non-identifying fields are read: no addresses, names or raw log text.
+type Call = { call_number: string; log_date: string; time_24h: string; call_reason: string; action: string; call_type_category: string; location_street: string | null };
+type Stats = { total: number; by_category: { k: string; n: number }[]; by_street: { k: string; n: number }[]; by_hour: { k: string; n: number }[]; by_day: { k: string; n: number }[]; sources: string[] };
+type Range = "week" | "month" | "year";
 
-const PoliceLogsPage = () => {
-  const { toast } = useToast();
+const RANGES: { id: Range; label: string; days: number }[] = [
+  { id: "week", label: "Latest week", days: 7 },
+  { id: "month", label: "30 days", days: 30 },
+  { id: "year", label: "This year", days: 0 },
+];
+const PAGE = 60;
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (s: string, n: number) => iso(new Date(new Date(s + "T12:00:00").getTime() + n * 864e5));
+const fmtDay = (s: string, long = false) => new Date(s + "T12:00:00").toLocaleDateString("en-US", long ? { weekday: "long", month: "long", day: "numeric" } : { month: "short", day: "numeric" });
+const hourLabel = (h: number) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+const ask = (q: string) => window.dispatchEvent(new CustomEvent("revere:ask", { detail: { q } }));
 
-  // State
-  const [logs, setLogs] = useState<any[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCallType, setSelectedCallType] = useState<string>('all');
-  const [selectedAction, setSelectedAction] = useState<string>('all');
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(100);
+export default function PoliceLogsPage() {
+  const reduce = useReducedMotion();
+  const [latest, setLatest] = useState<string | null>(null);
+  const [range, setRange] = useState<Range>("week");
+  const [streetSel, setStreetSel] = useState<string | null>(null);
+  const [cat, setCat] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [prev, setPrev] = useState<number | null>(null);
+  const [calls, setCalls] = useState<Call[] | null>(null);
+  const [more, setMore] = useState(false);
+  const [page, setPage] = useState(0);
 
-  // Stats
-  const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
-  const [latestLogDate, setLatestLogDate] = useState<string | null>(null);
-  // Trend: the 30 days up to the latest posted log. Drop a trailing partial day
-  // (logs end at 7am) so it doesn't read as a sudden drop in activity.
-  const recentDaily = useMemo(() => {
-    const rows = [...(dailyStats as any[])].sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
-    if (!rows.length) return rows;
-    const last = latestLogDate || rows[rows.length - 1].log_date;
-    const cutoff = new Date(new Date(last + 'T12:00:00').getTime() - 29 * 864e5).toISOString().slice(0, 10);
-    const inRange = rows.filter((r) => r.log_date >= cutoff && r.log_date <= last);
-    const counts = inRange.map((r) => Number(r.total_calls) || 0).sort((a, b) => a - b);
-    const median = counts[Math.floor(counts.length / 2)] || 0;
-    if (inRange.length > 3 && Number(inRange[inRange.length - 1].total_calls) < median * 0.4) inRange.pop();
-    return inRange;
-  }, [dailyStats, latestLogDate]);
-  const [callTypeBreakdown, setCallTypeBreakdown] = useState<CallTypeBreakdown[]>([]);
-  const [totalLogs, setTotalLogs] = useState(0);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
-
-  // Load data on mount
   useEffect(() => {
-    loadData();
-    loadStats();
-    loadAnalytics();
-
-    // Start auto-sync
-    PoliceLogsAutoSync.startAutoSync();
-
-    return () => {
-      PoliceLogsAutoSync.stopAutoSync();
-    };
+    supabase.from("police_logs" as any).select("log_date").order("log_date", { ascending: false }).limit(1)
+      .then(({ data }) => setLatest((data as any)?.[0]?.log_date ?? iso(new Date())));
   }, []);
 
-  // Filter logs when filters change
+  const win = useMemo(() => {
+    if (!latest) return null;
+    const r = RANGES.find((x) => x.id === range)!;
+    const since = r.days ? addDays(latest, -(r.days - 1)) : `${latest.slice(0, 4)}-01-01`;
+    const days = Math.round((new Date(latest).getTime() - new Date(since).getTime()) / 864e5) + 1;
+    return { since, until: latest, days, prevSince: addDays(since, -days), prevUntil: addDays(since, -1) };
+  }, [latest, range]);
+
+  // Summary for the window, and the same-length stretch before it (an honest comparison).
   useEffect(() => {
-    filterLogs();
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [logs, searchQuery, selectedCallType, selectedAction, selectedDate]);
+    if (!win) return;
+    const streets = streetSel ? [streetSel] : null;
+    setStats(null); setPrev(null);
+    supabase.rpc("police_stats" as any, { since: win.since, until: win.until, streets }).then(({ data }) => setStats(data as unknown as Stats));
+    supabase.rpc("police_stats" as any, { since: win.prevSince, until: win.prevUntil, streets }).then(({ data }) => setPrev((data as any)?.total ?? null));
+  }, [win, streetSel]);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Get total count first
-      const { count } = await supabase
-        .from('police_logs')
-        .select('*', { count: 'exact', head: true });
+  useEffect(() => setPage(0), [range, cat, streetSel, q]);
 
-      console.log('📊 Total records in DB:', count);
-
-      // Fetch data in batches to bypass 1000 row limit
-      const batchSize = 1000;
-      const allData: any[] = [];
-
-      for (let offset = 0; offset < (count || 0); offset += batchSize) {
-        const { data, error } = await supabase
-          .from('police_logs')
-          .select('*')
-          .order('timestamp', { ascending: false })
-          .range(offset, offset + batchSize - 1);
-
-        if (error) {
-          console.error('Error fetching batch:', error);
-          throw error;
-        }
-
-        if (data) {
-          allData.push(...data);
-          console.log(`📦 Fetched batch ${Math.floor(offset / batchSize) + 1}: ${data.length} records`);
-        }
-      }
-
-      console.log('📊 Loaded logs:', allData.length);
-      console.log('📅 Latest log date:', allData[0]?.log_date);
-      console.log('🕐 Latest timestamp:', allData[0]?.timestamp);
-
-      setLogs(allData);
-      setTotalLogs(allData.length);
-    } catch (error) {
-      console.error('Error loading logs:', error);
-      toast({
-        title: 'Error loading logs',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+  // The log itself.
+  useEffect(() => {
+    if (!win) return;
+    let qy = supabase.from("police_logs" as any)
+      .select("call_number,log_date,time_24h,call_reason,action,call_type_category,location_street")
+      .gte("log_date", win.since).lte("log_date", win.until)
+      .order("log_date", { ascending: false }).order("time_24h", { ascending: false })
+      .range(0, (page + 1) * PAGE);
+    if (cat) qy = qy.eq("call_type_category", cat);
+    if (streetSel) qy = qy.eq("location_street", streetSel);
+    if (q.trim().length > 1) qy = qy.ilike("call_reason", `%${q.trim()}%`);
+    const t = setTimeout(() => {
+      qy.then(({ data }) => {
+        const rows = (data as unknown as Call[]) || [];
+        setMore(rows.length > (page + 1) * PAGE);
+        setCalls(rows.slice(0, (page + 1) * PAGE));
       });
-    } finally {
-      setLoading(false);
+    }, q ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [win, cat, streetSel, q, page]);
+
+  // The log ends at 7 AM, so a trailing partial day is dropped from the chart.
+  const days = useMemo(() => {
+    const d = (stats?.by_day ?? []).slice().sort((a, b) => a.k.localeCompare(b.k));
+    const sorted = d.map((x) => x.n).sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)] || 0;
+    return d.length > 3 && d[d.length - 1].n < med * 0.4 ? d.slice(0, -1) : d;
+  }, [stats]);
+  const byHour = useMemo(() => {
+    const m = new Map((stats?.by_hour ?? []).map((h) => [Number(h.k), h.n]));
+    return Array.from({ length: 24 }, (_, h) => m.get(h) ?? 0);
+  }, [stats]);
+  const peakHour = byHour.indexOf(Math.max(...byHour));
+  const change = stats && prev ? ((stats.total - prev) / prev) * 100 : null;
+  const cats = (stats?.by_category ?? []).slice(0, 8);
+  const catMax = Math.max(1, ...cats.map((c) => c.n));
+  const streets = (stats?.by_street ?? []).slice(0, 8);
+  const streetMax = Math.max(1, ...streets.map((s) => s.n));
+  const dayMax = Math.max(1, ...days.map((d) => d.n));
+  const hourMax = Math.max(1, ...byHour);
+
+  const grouped = useMemo(() => {
+    const g: { day: string; rows: Call[] }[] = [];
+    for (const c of calls ?? []) {
+      const last = g[g.length - 1];
+      if (last && last.day === c.log_date) last.rows.push(c); else g.push({ day: c.log_date, rows: [c] });
     }
-  };
-
-  const loadStats = async () => {
-    try {
-      // Get date range from actual data
-      const { data: dateRange } = await supabase
-        .from('police_logs')
-        .select('log_date')
-        .order('log_date', { ascending: true })
-        .limit(1);
-
-      const { data: latestRow } = await supabase
-        .from('police_logs')
-        .select('log_date')
-        .order('log_date', { ascending: false })
-        .limit(1);
-      const latest = latestRow?.[0]?.log_date as string | undefined;
-      if (latest) setLatestLogDate(latest);
-      const startDate = dateRange?.[0]?.log_date ? new Date(dateRange[0].log_date) : new Date('2025-09-01');
-      const endDate = latest ? new Date(latest + 'T23:59:59') : new Date();
-
-      const [stats, breakdown] = await Promise.all([
-        PoliceLogsService.getDailyStats(startDate, endDate),
-        PoliceLogsService.getCallTypeBreakdown(startDate, endDate)
-      ]);
-
-      setDailyStats(stats);
-      setCallTypeBreakdown(breakdown);
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
-
-  const loadAnalytics = async () => {
-    setLoadingAnalytics(true);
-    try {
-      const data = await PoliceLogsAnalyticsService.getComprehensiveAnalytics();
-      setAnalyticsData(data);
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      toast({
-        title: 'Error loading analytics',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoadingAnalytics(false);
-    }
-  };
-
-  const filterLogs = () => {
-    let filtered = [...logs];
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(log =>
-        log.call_reason?.toLowerCase().includes(query) ||
-        log.location_address?.toLowerCase().includes(query) ||
-        log.action?.toLowerCase().includes(query) ||
-        log.call_number?.toLowerCase().includes(query)
-      );
-    }
-
-    // Call type filter
-    if (selectedCallType && selectedCallType !== 'all') {
-      filtered = filtered.filter(log => log.call_type_category === selectedCallType);
-    }
-
-    // Action filter
-    if (selectedAction && selectedAction !== 'all') {
-      filtered = filtered.filter(log => log.action_category === selectedAction);
-    }
-
-    // Date filter
-    if (selectedDate) {
-      filtered = filtered.filter(log => log.log_date === selectedDate);
-    }
-
-    console.log('🔍 Filtered logs:', filtered.length);
-    console.log('🔝 Top 3 dates:', filtered.slice(0, 3).map(l => ({ date: l.log_date, time: l.time_24h, call: l.call_number })));
-
-    setFilteredLogs(filtered);
-  };
-
-  const handleManualSync = async () => {
-    setSyncing(true);
-    toast({
-      title: '🔄 Syncing police logs...',
-      description: 'Fetching latest data from Revere PD'
-    });
-
-    try {
-      await PoliceLogsAutoSync.manualSync();
-      await loadData();
-      await loadStats();
-      await loadAnalytics();
-
-      toast({
-        title: '✅ Sync complete!',
-        description: 'Police logs have been updated'
-      });
-    } catch (error) {
-      toast({
-        title: '❌ Sync failed',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const getUniqueCallTypes = () => {
-    const types = new Set(logs.map(log => log.call_type_category).filter(Boolean));
-    return Array.from(types).sort();
-  };
-
-  const getUniqueActions = () => {
-    const actions = new Set(logs.map(log => log.action_category).filter(Boolean));
-    return Array.from(actions).sort();
-  };
-
-  const getUniqueDates = () => {
-    const dates = new Set(logs.map(log => log.log_date).filter(Boolean));
-    return Array.from(dates).sort().reverse();
-  };
-
-  const formatCallType = (type: string) => {
-    return type.replace(/_/g, ' ').toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  const getActionBadgeColor = (action: string) => {
-    switch (action) {
-      case 'ARREST': return 'destructive';
-      case 'REPORT': return 'default';
-      case 'SERVICES_RENDERED': return 'secondary';
-      case 'NO_ACTION': return 'outline';
-      case 'WARNING': return 'default';
-      default: return 'secondary';
-    }
-  };
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredLogs.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+    return g;
+  }, [calls]);
 
   return (
-    <DashboardLayout pageTitle="Police Logs">
-      <div className="space-y-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Logs (All Time)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalLogs.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Unique Call Types
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{getUniqueCallTypes().length}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Reports Filed
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {logs.filter(l => l.action_category === 'REPORT').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Services Rendered
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {logs.filter(l => l.action_category === 'SERVICES_RENDERED').length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Overview Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Call Type Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Call Type Distribution</CardTitle>
-              <CardDescription>Top categories from current data</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={callTypeBreakdown.slice(0, 8)}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ callTypeCategory, percentage }) =>
-                      `${formatCallType(callTypeCategory)} (${percentage.toFixed(1)}%)`
-                    }
-                    outerRadius={80}
-                    fill="#b9e3fb"
-                    dataKey="count"
-                  >
-                    {callTypeBreakdown.slice(0, 8).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Daily Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Activity Trend</CardTitle>
-              <CardDescription>Calls per day · 30 days to the latest log{latestLogDate ? ` (${new Date(latestLogDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={recentDaily}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="log_date"
-                    tickFormatter={(date) => new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis />
-                  <Tooltip
-                    labelFormatter={(date) => new Date(date + 'T12:00:00').toLocaleDateString()}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="total_calls"
-                    stroke="#2f7fb3"
-                    strokeWidth={2}
-                    name="Total Calls"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Advanced Analytics Dashboard */}
-        {loadingAnalytics ? (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading advanced analytics...</span>
+    <DashboardLayout pageTitle="Police log">
+      <div className="mx-auto max-w-[1280px] space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex rounded-full bg-card p-1" role="tablist" aria-label="Time range">
+            {RANGES.map((r) => (
+              <button key={r.id} role="tab" aria-selected={range === r.id} onClick={() => setRange(r.id)}
+                className={cn("relative h-10 flex-1 rounded-full px-4 text-[14px] font-medium transition-colors lg:flex-none", range === r.id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                {range === r.id && <motion.span layoutId="pl-range" className="absolute inset-0 rounded-full bg-primary" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+                <span className="relative">{r.label}</span>
+              </button>
+            ))}
           </div>
-        ) : analyticsData ? (
-          <PoliceLogsAnalytics data={analyticsData} />
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              No analytics data available. Click "Sync Now" to load data.
-            </CardContent>
-          </Card>
+          <p className="text-[13px] text-muted-foreground">
+            {win ? <>{fmtDay(win.since)} to {fmtDay(win.until)} · the latest day in the department's posted log</> : "Loading…"}
+          </p>
+        </div>
+
+        {streetSel && (
+          <div className="flex items-center gap-2 text-[14px]">
+            <span className="text-muted-foreground">Showing only</span>
+            <button onClick={() => setStreetSel(null)} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-highlight-secondary/15 px-3 font-medium text-highlight-secondary">
+              {street(streetSel)} <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
 
-        {/* Filters and Search */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Filter Logs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search logs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Figure label="Calls" value={stats ? stats.total.toLocaleString("en-US") : null} accent
+            note={change != null && win ? `${Math.abs(change).toFixed(0)}% ${change >= 0 ? "more" : "fewer"} than the ${win.days} days before` : " "} />
+          <Figure label="Most common" small value={cats[0] ? catLabel(cats[0].k) : null} note={cats[0] ? `${cats[0].n} calls · ${Math.round((cats[0].n / (stats?.total || 1)) * 100)}% of all` : " "} />
+          <Figure label="Busiest hour" value={stats ? `${peakHour % 12 || 12} ${peakHour < 12 ? "AM" : "PM"}` : null} note={stats ? `${byHour[peakHour]} calls started then` : " "} />
+          <Figure label="Busiest street" small value={streets[0] ? street(streets[0].k) : null} note={streets[0] ? `${streets[0].n} calls` : " "} />
+        </section>
 
-              <Select value={selectedCallType} onValueChange={setSelectedCallType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Call Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Call Types</SelectItem>
-                  {getUniqueCallTypes().map(type => (
-                    <SelectItem key={type} value={type}>
-                      {formatCallType(type)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  {getUniqueActions().map(action => (
-                    <SelectItem key={action} value={action}>
-                      {formatCallType(action)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedDate || 'all'} onValueChange={(val) => setSelectedDate(val === 'all' ? '' : val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Dates" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Dates</SelectItem>
-                  {getUniqueDates().map(date => (
-                    <SelectItem key={date} value={date}>
-                      {new Date(date + 'T12:00:00').toLocaleDateString()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <section className="grid gap-3 lg:grid-cols-12">
+          <Panel className="lg:col-span-7" title="Calls each day" sub="Hover or tap a bar for the count">
+            <div className="flex h-[170px] items-end gap-[3px] md:gap-1.5">
+              {days.map((d, i) => (
+                <div key={d.k} className="group flex h-full min-w-0 flex-1 flex-col justify-end" title={`${fmtDay(d.k)}: ${d.n} calls`}>
+                  <span className="figure mb-1 text-center text-[11px] text-muted-foreground opacity-0 transition group-hover:opacity-100">{d.n}</span>
+                  <motion.div className={cn("w-full rounded-t-[6px]", i === days.length - 1 ? "bg-highlight-secondary" : "bg-highlight/80 group-hover:bg-highlight")}
+                    initial={reduce ? false : { height: 0 }} animate={{ height: `${(d.n / dayMax) * 100}%` }} transition={{ delay: Math.min(i, 30) * 0.015, duration: 0.6, ease: [0.22, 1, 0.36, 1] }} />
+                </div>
+              ))}
+              {!stats && <div className="skeleton h-full w-full" />}
             </div>
-
-            {(searchQuery || selectedCallType !== 'all' || selectedAction !== 'all' || selectedDate) && (
-              <div className="mt-4 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Showing {filteredLogs.length} of {logs.length} logs
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedCallType('all');
-                    setSelectedAction('all');
-                    setSelectedDate('');
-                  }}
-                >
-                  Clear Filters
-                </Button>
+            {days.length <= 14 ? (
+              <div className="mt-2 flex gap-[3px] text-center text-[12px] text-muted-foreground md:gap-1.5">
+                {days.map((d) => <span key={d.k} className="min-w-0 flex-1 truncate">{new Date(d.k + "T12:00").toLocaleDateString("en-US", { weekday: "short" })}</span>)}
+              </div>
+            ) : (
+              <div className="mt-2 flex justify-between text-[12px] text-muted-foreground">
+                <span>{days[0] ? fmtDay(days[0].k) : ""}</span><span>{days.length ? fmtDay(days[days.length - 1].k) : ""}</span>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </Panel>
 
-        {/* Logs Table - Always Visible Below Analytics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              {filteredLogs.length} log entries
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Call #</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                        Loading logs...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No logs found matching your filters
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-mono text-sm">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-muted-foreground" />
-                            {log.time_24h}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {log.log_date ? new Date(log.log_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{log.call_number}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {formatCallType(log.call_type_category || 'OTHER')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate text-sm">
-                          {log.call_reason}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate text-sm">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                            <span>{log.location_address || 'N/A'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getActionBadgeColor(log.action_category)} className="text-xs">
-                            {formatCallType(log.action_category || 'OTHER')}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination Controls */}
-            {filteredLogs.length > pageSize && (
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} records
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <div className="text-sm text-muted-foreground">
-                    Page {currentPage} of {totalPages}
+          <Panel className="lg:col-span-5" title="What people called about" sub="Tap one to filter the log below">
+            <div className="space-y-1">
+              {cats.map((c, i) => (
+                <button key={c.k} onClick={() => setCat(cat === c.k ? null : c.k)} className={cn("grid w-full grid-cols-[1fr_auto] items-center gap-x-3 rounded-xl px-2 py-1.5 text-left transition-colors", cat === c.k ? "bg-secondary" : "hover:bg-secondary/60")}>
+                  <span className="flex min-w-0 items-center gap-2 text-[14px] text-foreground"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: catTone(c.k) }} /><span className="truncate">{catLabel(c.k)}</span></span>
+                  <span className="figure text-[14px] text-foreground">{c.n}</span>
+                  <div className="col-span-2 mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+                    <motion.div className="h-full rounded-full" style={{ background: catTone(c.k) }} initial={reduce ? false : { width: 0 }} animate={{ width: `${(c.n / catMax) * 100}%` }} transition={{ delay: i * 0.05, duration: 0.6 }} />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Last
-                  </Button>
+                </button>
+              ))}
+              {!stats && <div className="skeleton h-40" />}
+            </div>
+          </Panel>
+
+          <Panel className="lg:col-span-7" title="When calls come in" sub="By the hour each call started. Darker bars are nighttime; orange is the busiest hour.">
+            <div className="flex h-[190px] items-end gap-[2px] md:gap-1">
+              {byHour.map((n, h) => (
+                <div key={h} className="group flex h-full min-w-0 flex-1 flex-col justify-end" title={`${hourLabel(h)}: ${n} calls`}>
+                  <span className="figure mb-1 text-center text-[10.5px] text-muted-foreground opacity-0 transition group-hover:opacity-100">{n}</span>
+                  <motion.div className={cn("w-full rounded-t-[5px]", h === peakHour ? "bg-highlight-secondary" : (h >= 6 && h < 18) ? "bg-highlight/75" : "bg-highlight/40")}
+                    initial={reduce ? false : { height: 0 }} animate={{ height: `${Math.max(3, (n / hourMax) * 100)}%` }} transition={{ delay: h * 0.02, duration: 0.6 }} />
                 </div>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-4 text-[12px] text-muted-foreground"><span>Midnight</span><span className="text-center">6 AM</span><span className="text-center">Noon</span><span className="text-right">6 PM</span></div>
+          </Panel>
+
+          <Panel className="lg:col-span-5" title="Where" sub="Tap a street to see only its calls">
+            <div className="space-y-1.5">
+              {streets.map((s) => (
+                <button key={s.k} onClick={() => setStreetSel(streetSel === s.k ? null : s.k)} className={cn("relative flex h-9 w-full items-center justify-between overflow-hidden rounded-xl px-3 text-left text-[14px] transition-colors", streetSel === s.k ? "ring-2 ring-highlight-secondary" : "hover:bg-secondary/60")}>
+                  <motion.span className="absolute inset-y-0 left-0 rounded-xl bg-highlight/20" initial={reduce ? false : { width: 0 }} animate={{ width: `${(s.n / streetMax) * 100}%` }} transition={{ duration: 0.6 }} />
+                  <span className="relative truncate text-foreground">{street(s.k)}</span>
+                  <span className="figure relative text-foreground">{s.n}</span>
+                </button>
+              ))}
+              {!stats && <div className="skeleton h-40" />}
+            </div>
+          </Panel>
+        </section>
+
+        <section className="rounded-[24px] bg-card p-4 md:p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">Every call{cat ? `: ${catLabel(cat).toLowerCase()}` : ""}</h2>
+              <p className="text-[13px] text-muted-foreground">Newest first. Times are when the call came in.</p>
+            </div>
+            <div className="flex gap-2">
+              <label className="relative flex-1 md:w-72 md:flex-none">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <span className="sr-only">Search calls</span>
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search: noise, theft, crash…"
+                  className="h-11 w-full rounded-full bg-background pl-10 pr-4 text-[15px] text-foreground outline-none ring-1 ring-border placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+              </label>
+              {(cat || q) && <button onClick={() => { setCat(null); setQ(""); }} className="h-11 rounded-full bg-secondary px-4 text-[14px] text-foreground">Clear</button>}
+            </div>
+          </div>
+
+          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+            {Object.keys(CATEGORY).filter((k) => k !== "OTHER").map((k) => (
+              <button key={k} onClick={() => setCat(cat === k ? null : k)}
+                className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-[13px] transition-colors", cat === k ? "bg-primary text-primary-foreground" : "bg-background text-foreground ring-1 ring-border hover:bg-secondary")}>
+                <span className="h-2 w-2 rounded-full" style={{ background: catTone(k) }} />{catLabel(k)}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 space-y-6">
+            {grouped.map((g, gi) => (
+              <div key={g.day}>
+                <h3 className="sticky top-[88px] z-[1] -mx-1 bg-card/95 px-1 py-1.5 text-[14px] font-semibold text-foreground backdrop-blur md:top-[40px]">
+                  {fmtDay(g.day, true)} <span className="font-normal text-muted-foreground">· {g.rows.length}{more && gi === grouped.length - 1 ? "+" : ""} calls</span>
+                </h3>
+                <ul className="mt-1 divide-y divide-border">
+                  {g.rows.map((c) => (
+                    <li key={c.call_number} className="grid grid-cols-[64px_1fr] gap-3 py-3 md:grid-cols-[84px_1fr_auto] md:items-center">
+                      <span className="figure pt-0.5 text-[14px] text-muted-foreground md:pt-0">{time12(c.time_24h)}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: catTone(c.call_type_category) }} />
+                          <span className="truncate text-[15px] font-medium text-foreground">{plainReason(c.call_reason)}</span>
+                        </div>
+                        <div className="mt-0.5 text-[13px] text-muted-foreground">
+                          {c.location_street ? <button onClick={() => setStreetSel(c.location_street)} className="hover:text-foreground hover:underline">{street(c.location_street)}</button> : "Location not listed"}
+                          <span className="md:hidden"> · {plainAction(c.action)}</span>
+                        </div>
+                      </div>
+                      <span className="hidden rounded-full bg-secondary px-3 py-1 text-[12.5px] text-foreground md:inline-block">{plainAction(c.action)}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+            {calls && !calls.length && <p className="py-10 text-center text-[15px] text-muted-foreground">No calls match. <button className="font-medium text-foreground underline" onClick={() => { setCat(null); setQ(""); setStreetSel(null); }}>Clear filters</button></p>}
+            {!calls && <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-14" />)}</div>}
+          </div>
+          {more && <button onClick={() => setPage((p) => p + 1)} className="mt-4 h-12 w-full rounded-full bg-secondary text-[15px] font-medium text-foreground transition-colors hover:bg-accent">Show more calls</button>}
+        </section>
+
+        <section className="flex flex-col gap-3 rounded-[24px] bg-card p-4 text-[14px] md:flex-row md:items-center md:justify-between md:p-6">
+          <div className="max-w-[720px] text-muted-foreground">
+            From the Revere Police Department's public dispatch log. It lists calls officers responded to, not confirmed crimes. Street names only; no personal details are shown.
+            <span className="mt-2 flex flex-wrap gap-2">
+              {(stats?.sources ?? []).map((u) => (
+                <a key={u} href={u} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[13px] text-foreground hover:bg-accent">
+                  Log {decodeURIComponent(u.split("/").pop() || "").replace(/-redacted\.pdf$/i, "").replace(/-0000|-0700|-7am/gi, "").replace(/-to-/, " to ").replace(/-/g, "/")} <ExternalLink className="h-3 w-3" />
+                </a>
+              ))}
+            </span>
+          </div>
+          <button onClick={() => ask(streetSel ? `What's been happening on ${street(streetSel)} lately?` : "What were the most serious police calls this week?")}
+            className="h-11 shrink-0 rounded-full bg-primary px-5 text-[15px] font-medium text-primary-foreground">Ask about this</button>
+        </section>
       </div>
     </DashboardLayout>
   );
-};
+}
 
-export default PoliceLogsPage;
+function Figure({ label, value, note, accent, small }: { label: string; value: string | null; note: string; accent?: boolean; small?: boolean }) {
+  return (
+    <div className="flex min-h-[124px] flex-col rounded-[24px] bg-card p-4 md:p-5">
+      <span className="text-[13px] text-muted-foreground">{label}</span>
+      {value == null ? <span className="skeleton mt-2 h-8 w-24" /> :
+        <span className={cn("figure mt-1 leading-tight", small ? "text-[20px] md:text-[26px]" : "text-[34px] md:text-[42px]", accent ? "text-highlight-secondary" : "text-foreground")}>{value}</span>}
+      <span className="mt-auto pt-2 text-[12.5px] leading-snug text-muted-foreground">{note}</span>
+    </div>
+  );
+}
+
+function Panel({ title, sub, className, children }: { title: string; sub?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <section className={cn("rounded-[24px] bg-card p-4 md:p-6", className)}>
+      <h2 className="text-[17px] font-semibold text-foreground">{title}</h2>
+      {sub && <p className="mb-4 text-[13px] text-muted-foreground">{sub}</p>}
+      {children}
+    </section>
+  );
+}
