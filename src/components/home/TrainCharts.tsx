@@ -46,12 +46,12 @@ function lateness(deps: Pair<Dep[]> | null, day: Pair<Sched[]> | null, now: numb
   return { median: diffs[Math.floor(diffs.length / 2)], n: diffs.length };
 }
 
-export function TrainStats({ running, deps, day, now, atEnd }: { running: Pair<number> | null; deps: Pair<Dep[]> | null; day: Pair<Sched[]> | null; now: number; atEnd: boolean }) {
+export function TrainStats({ running, inRevere, deps, day, now, atEnd }: { running: Pair<number> | null; inRevere: number | null; deps: Pair<Dep[]> | null; day: Pair<Sched[]> | null; now: number; atEnd: boolean }) {
   const h0 = headway(deps?.[0], day?.[0], now), h1 = headway(deps?.[1], day?.[1], now);
   const late = lateness(deps, day, now);
   const lateText = late == null ? "—" : Math.abs(late.median) < 1.5 ? "On time" : late.median > 0 ? `${Math.round(late.median)} min late` : `${Math.round(-late.median)} min early`;
   const tiles = [
-    { k: "Trains on the line", v: running ? String(running[0] + running[1]) : "…", sub: running ? `${running[0]} to Boston · ${running[1]} to Wonderland` : "Counting…" },
+    { k: "Trains on the line", v: running ? String(running[0] + running[1]) : "…", sub: running ? `${running[0]} to Boston · ${running[1]} to Wonderland${inRevere != null ? ` · ${inRevere} in Revere now` : ""}` : "Counting…" },
     { k: "To Boston", v: h0 ? `every ${h0} min` : "—", sub: "average gap between trains", dot: "bg-highlight-secondary" },
     { k: atEnd ? "From Boston" : "To Wonderland", v: h1 ? `every ${h1} min` : "—", sub: "average gap between trains", dot: "bg-white" },
     { k: "Vs. timetable", v: lateText, sub: late ? `from the next ${late.n} live trains` : "no live trains to compare yet" },
@@ -176,7 +176,7 @@ export function TrainsByHour({ day, now, atEnd }: { day: Pair<Sched[]> | null; n
   const show = hover ?? (cur >= 0 ? cur : null);
 
   return (
-    <div className="rounded-[22px] bg-black/25 px-4 pb-3 pt-4 ring-1 ring-white/10 md:px-6">
+    <div className="rounded-[22px] bg-black/25 px-4 pb-3 pt-4 ring-1 ring-white/10 md:px-6 lg:flex lg:flex-col">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="text-[15px] font-semibold">Trains per hour today</h3>
         <span className="text-[12.5px] text-white/60">
@@ -186,20 +186,20 @@ export function TrainsByHour({ day, now, atEnd }: { day: Pair<Sched[]> | null; n
         </span>
       </div>
       {!day ? <div className="mt-3 h-[140px] animate-pulse rounded-xl bg-white/5" /> : (
-        <div className="relative mt-3" role="img"
+        <div className="relative mt-4 flex flex-1 flex-col" role="img"
           aria-label={`Trains per hour today. Busiest hour ${hourLabel(cols[busiest].t)} with ${cols[busiest].c[0]} to Boston and ${cols[busiest].c[1]} the other way.`}>
-          <div className="flex gap-[2px]" onMouseLeave={() => setHover(null)}>
+          <div className="flex flex-1 gap-[2px]" onMouseLeave={() => setHover(null)}>
             {cols.map((c, i) => {
               const past = cur >= 0 && i < cur;
               return (
                 <button key={c.key} className={cn("group relative flex min-w-0 flex-1 flex-col items-stretch rounded-md outline-none focus-visible:ring-1 focus-visible:ring-white/50", i === cur && "bg-white/[0.07]")}
                   onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
                   aria-label={`${hourLabel(c.t)}: ${c.c[0]} to Boston, ${c.c[1]} ${atEnd ? "from Boston" : "to Wonderland"}`}>
-                  <div className="flex items-end justify-center px-[1px]" style={{ height: H }}>
+                  <div className="flex items-end justify-center px-[1px] lg:flex-1" style={{ minHeight: H }}>
                     <div className={cn("w-full max-w-[14px] rounded-t-[4px] bg-highlight-secondary transition-opacity", past ? "opacity-35" : "opacity-100", hover === i && "opacity-100")} style={{ height: `${(c.c[0] / max) * 100}%` }} />
                   </div>
                   <div className="h-[2px] bg-white/25" />
-                  <div className="flex items-start justify-center px-[1px]" style={{ height: H }}>
+                  <div className="flex items-start justify-center px-[1px] lg:flex-1" style={{ minHeight: H }}>
                     <div className={cn("w-full max-w-[14px] rounded-b-[4px] bg-white transition-opacity", past ? "opacity-30" : "opacity-90", hover === i && "opacity-100")} style={{ height: `${(c.c[1] / max) * 100}%` }} />
                   </div>
                   <span className={cn("figure mt-1 h-[14px] text-center text-[10.5px] leading-none", i === cur ? "font-semibold text-white" : "text-white/45")}>
@@ -214,6 +214,44 @@ export function TrainsByHour({ day, now, atEnd }: { day: Pair<Sched[]> | null; n
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-white" />Below: {atEnd ? "from Boston" : "to Wonderland"}</span>
             <span>Faded bars have already run</span>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Every train today at the chosen station, each way: how many in total, how many have run, how many are left. */
+export function TodaySummary({ day, now, atEnd, stationName }: { day: Pair<Sched[]> | null; now: number; atEnd: boolean; stationName: string }) {
+  return (
+    <div className="rounded-[22px] bg-black/25 px-4 pb-4 pt-4 ring-1 ring-white/10 md:px-6">
+      <h3 className="text-[15px] font-semibold">All trains today at {stationName}</h3>
+      {!day && <div className="mt-3 h-[96px] animate-pulse rounded-xl bg-white/5" />}
+      {day && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {([0, 1] as const).map((dir) => {
+            const all = day[dir], ran = all.filter((x) => x.at <= now).length, left = all.length - ran;
+            const first = all[0]?.at, last = all[all.length - 1]?.at;
+            return (
+              <div key={dir} className="rounded-2xl bg-white/[0.05] px-3.5 py-3 ring-1 ring-white/10">
+                <div className="flex items-center gap-1.5 text-[12.5px] text-white/70">
+                  <span className={cn("h-2 w-2 rounded-full", dir === 0 ? "bg-highlight-secondary" : "bg-white")} />
+                  {dir === 0 ? "To Boston" : atEnd ? "From Boston" : "To Wonderland"}
+                </div>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="figure text-[24px] font-semibold leading-none text-white">{all.length}</span>
+                  <span className="text-[13px] text-white/60">trains today</span>
+                </div>
+                <div className="mt-2 flex h-[6px] gap-[2px] overflow-hidden rounded-full" role="img" aria-label={`${ran} have run, ${left} still to come`}>
+                  <div className={cn("rounded-l-full", dir === 0 ? "bg-highlight-secondary/45" : "bg-white/40")} style={{ width: `${all.length ? (ran / all.length) * 100 : 0}%` }} />
+                  <div className={cn("flex-1 rounded-r-full", dir === 0 ? "bg-highlight-secondary" : "bg-white")} />
+                </div>
+                <div className="mt-1.5 text-[12px] leading-relaxed text-white/60">
+                  <span><span className="figure font-semibold text-white">{ran}</span> run · <span className="figure font-semibold text-white">{left}</span> to come</span>
+                  {first && last && <span className="block">First <span className="figure text-white/85">{hm(first)}</span> · last <span className="figure text-white/85">{hm(last)}</span></span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

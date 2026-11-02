@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { NextHour, TrainStats, TrainsByHour } from "./TrainCharts";
+import { NextHour, TodaySummary, TrainStats, TrainsByHour } from "./TrainCharts";
 
 // The Blue Line from Wonderland (north end, in Revere) toward downtown Boston.
 const LINE = [
@@ -307,12 +307,15 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           <Card dir={1} />
         </div>
 
-        <div className="mt-3"><TrainStats running={running} deps={deps} day={day} now={now} atEnd={atEnd} /></div>
+        <div className="mt-3"><TrainStats running={running} inRevere={vehicles ? vehicles.filter((v) => v.idx <= 3).length : null} deps={deps} day={day} now={now} atEnd={atEnd} /></div>
 
         <div className="mt-3">{narrow ? vertical : horizontal}</div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <NextHour deps={deps} day={day} narrow={narrow} now={now} atEnd={atEnd} stationName={station.name} />
+          <div className="grid content-start gap-3">
+            <NextHour deps={deps} day={day} narrow={narrow} now={now} atEnd={atEnd} stationName={station.name} />
+            <TodaySummary day={day} now={now} atEnd={atEnd} stationName={station.name} />
+          </div>
           <TrainsByHour day={day} now={now} atEnd={atEnd} />
         </div>
 
