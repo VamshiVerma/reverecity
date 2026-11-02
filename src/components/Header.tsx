@@ -1,12 +1,10 @@
-import { Menu, Mic } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 interface HeaderProps {
   toggleSidebar: () => void;
   pageTitle?: string;
 }
-
-const ask = (detail?: { q?: string; voice?: boolean }) => window.dispatchEvent(new CustomEvent("revere:ask", { detail }));
 
 const TITLES: Record<string, string> = {
   "/": "Today in Revere", "/police-logs": "Police log", "/mbta": "Blue Line & buses", "/weather": "Weather", "/budget": "Budget",
@@ -23,9 +21,6 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
       <Menu className="h-5 w-5" />
     </button>
     <span className="min-w-0 flex-1 truncate text-[16px] font-medium text-foreground">{TITLES[pathname] ?? "Revere.City"}</span>
-    <button onClick={() => ask({ voice: true })} aria-label="Ask by voice" className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground active:scale-95">
-      <Mic className="h-[17px] w-[17px]" />
-    </button>
   </header>
   );
 };

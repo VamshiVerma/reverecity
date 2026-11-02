@@ -30,7 +30,10 @@ export default function LiveToasts() {
       save(candidates.filter((i) => !i.id.startsWith("demo")).map(key));
       seen = candidates.filter((i) => !i.id.startsWith("demo")).map(key);
     }
-    const fresh = candidates.filter((i) => !seen!.includes(key(i)) && !stack.some((s) => s.id === i.id));
+    // Skip whatever the full-screen takeover already showed this visit.
+    let flashed: string[] = [];
+    try { flashed = JSON.parse(sessionStorage.getItem("revere.takeover.session") || "[]"); } catch { /* ignore */ }
+    const fresh = candidates.filter((i) => !seen!.includes(key(i)) && !flashed.includes(i.id) && !stack.some((s) => s.id === i.id));
     if (fresh.length) {
       setStack((s) => [...fresh.slice(0, 3), ...s].slice(0, 3));
       save([...seen, ...fresh.filter((i) => !i.id.startsWith("demo")).map(key)]);

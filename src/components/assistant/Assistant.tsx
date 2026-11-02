@@ -57,7 +57,9 @@ export default function Assistant() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
-  const [readAloud, setReadAloud] = useState(false);
+  // Answers are read aloud unless the resident turns it off (remembered on this device).
+  const [readAloud, setReadAloud] = useState(() => { try { return localStorage.getItem("revere.readAloud") !== "0"; } catch { return true; } });
+  useEffect(() => { try { localStorage.setItem("revere.readAloud", readAloud ? "1" : "0"); } catch { /* ignore */ } }, [readAloud]);
   const [handsFree, setHandsFree] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,7 @@ export default function Assistant() {
   const send = useCallback(async (text: string, viaVoice = false) => {
     const q = text.trim();
     if (!q || busy) return;
+    unlockSpeech(); // runs inside the tap or Enter, so the phone lets the answer play
     const history: ChatTurn[] = msgs.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content }));
     setMsgs((m) => [...m, { id: uid(), role: "user", content: q }]);
     setInput("");
@@ -107,6 +110,7 @@ export default function Assistant() {
   // Other parts of the app can open the assistant (optionally with a question).
   useEffect(() => {
     const onAsk = (e: Event) => {
+      unlockSpeech(); // still inside the tap that asked
       setOpen(true);
       const d = (e as CustomEvent<{ q?: string; voice?: boolean }>).detail;
       if (d?.q) setTimeout(() => sendRef.current?.(d.q!), 350);
@@ -145,13 +149,13 @@ export default function Assistant() {
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setOpen(true)}
-            className="group fixed bottom-5 right-5 z-50 flex h-14 items-center gap-3 rounded-full bg-primary pl-2 pr-2 text-primary-foreground shadow-[0_12px_32px_rgba(0,0,0,0.6)] md:pr-5"
+            className="group fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-5 z-50 flex h-14 items-center gap-3 rounded-full bg-[#02070A]/90 p-2 text-white shadow-[0_12px_40px_rgba(2,151,222,0.35)] ring-1 ring-white/15 backdrop-blur-md md:pr-5"
             aria-label="Ask Revere"
           >
-            <VoiceDot state="idle" className="h-10 w-10" />
+            <AiOrb className="h-10 w-10" />
             <span className="hidden flex-col items-start leading-tight md:flex">
               <span className="text-[15px] font-semibold">Ask Revere</span>
-              <span className="text-[12px] opacity-60">Type or just talk</span>
+              <span className="text-[12px] text-white/60">Type or just talk</span>
             </span>
           </motion.button>
         )}
@@ -178,7 +182,7 @@ export default function Assistant() {
 
               {/* Header */}
               <header className="relative flex h-16 items-center gap-3 border-b border-border px-5">
-                <VoiceDot state={orbState} className="h-9 w-9" />
+                <AiOrb state={orbState} level={voice.level.reduce((a, b) => a + b, 0) / voice.level.length} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[16px] font-semibold leading-tight text-foreground">Ask Revere</h2>
                   <p className="truncate text-[13px] text-muted-foreground">
@@ -217,16 +221,36 @@ export default function Assistant() {
                 <AnimatePresence mode="wait">
                   {voice.transcribing ? (
                     <motion.div key="trans" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                      className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2 text-[16px] text-muted-foreground">
-                      <span className="flex gap-1">{[0, 1, 2].map((i) => <motion.span key={i} className="h-2 w-2 rounded-full bg-highlight" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />)}</span>
-                      Working out what you said…
+                      className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-3 pl-3 pr-4 text-[16px]">
+                      <AiOrb state="busy" className="h-9 w-9" />
+                      <p className="min-w-0 flex-1 text-[17px] leading-snug text-foreground">
+                        {voice.interim ? <>“{voice.interim}”</> : <span className="text-muted-foreground">Working out what you said…</span>}
+                      </p>
                     </motion.div>
                   ) : voice.listening ? (
                     <motion.div key="listen" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                      className="flex min-h-[60px] items-center gap-3 rounded-[28px] bg-card py-2 pl-4 pr-2">
-                      <Wave level={voice.level} />
-                      <p className="min-w-0 flex-1 truncate text-[16px] text-foreground">{voice.interim || <span className="text-muted-foreground">{voice.hearing ? "Go on, I'm listening…" : "Listening. Ask your question…"}</span>}</p>
-                      <button onClick={voice.stopListening} className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Stop listening">
+                      className="rounded-[28px] bg-card py-3 pl-4 pr-2">
+                      <div className="flex items-center gap-3">
+                        <Wave level={voice.level} />
+                        <span className="min-w-0 flex-1 text-[13px] text-muted-foreground">{voice.hearing ? "Listening… pause when you're done" : "Listening. Ask your question…"}</span>
+                        <button onClick={voice.stopListening} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Stop listening">
+                          <Square className="h-4 w-4 fill-current" />
+                        </button>
+                      </div>
+                      {/* What you're saying, as you say it */}
+                      <p aria-live="polite" className={cn("mt-2 pr-3 text-[19px] leading-snug transition-colors", voice.interim ? "text-foreground" : "text-muted-foreground/60")}>
+                        {voice.interim || (voice.hearing ? "…" : "Try: “When's the next train to Boston?”")}
+                      </p>
+                    </motion.div>
+                  ) : voice.speaking && voice.caption ? (
+                    <motion.div key="speak" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      className="flex items-start gap-3 rounded-[28px] bg-card py-3 pl-3 pr-2">
+                      <AiOrb state="speaking" className="mt-0.5 h-9 w-9" />
+                      <AnimatePresence mode="wait">
+                        <motion.p key={voice.caption} aria-live="polite" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                          className="min-w-0 flex-1 pt-1 text-[17px] leading-snug text-foreground">{voice.caption}</motion.p>
+                      </AnimatePresence>
+                      <button onClick={voice.stopSpeaking} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground" aria-label="Stop speaking">
                         <Square className="h-4 w-4 fill-current" />
                       </button>
                     </motion.div>
@@ -314,19 +338,13 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   );
 }
 
-/** Voice state as a solid disc with live bars: idle, thinking, listening or speaking. */
-function VoiceDot({ state, className }: { state: string; className?: string }) {
-  const moving = state !== "idle";
+/** The assistant's orb: light swirling inside a glass sphere. Faster when thinking, warmer and
+ *  breathing with your voice when listening, glowing while it speaks. */
+export function AiOrb({ state = "idle", level = 0, className }: { state?: string; level?: number; className?: string }) {
   return (
-    <span className={cn("relative grid shrink-0 place-items-center rounded-full bg-highlight", className)} aria-hidden>
-      <span className="flex h-[42%] items-center gap-[2px]">
-        {[0.55, 1, 0.75, 0.4].map((h, i) => (
-          <motion.span key={i} className="w-[2.5px] rounded-full bg-black"
-            animate={moving ? { scaleY: [h, 1, 0.35, h] } : { scaleY: h }}
-            transition={moving ? { duration: state === "busy" ? 0.9 : 0.6, repeat: Infinity, delay: i * 0.12, ease: "easeInOut" } : { duration: 0.3 }}
-            style={{ height: "100%", originY: 0.5 }} />
-        ))}
-      </span>
+    <span data-state={state} className={cn("ai-orb block shrink-0", className)} aria-hidden
+      style={{ ["--s" as string]: state === "listening" ? String(1 + Math.min(0.18, level * 0.35)) : "1" }}>
+      <span className="swirl" /><span className="blob" /><span className="core" /><span className="gloss" />
     </span>
   );
 }
@@ -529,7 +547,7 @@ function Thinking({ steps }: { steps: string[] }) {
   const label = steps[i % steps.length];
   return (
     <div className="flex gap-3">
-      <span className="orb orb-busy mt-0.5 h-7 w-7 shrink-0" />
+      <AiOrb state="busy" className="mt-0.5 h-7 w-7" />
       <div className="flex-1 space-y-2 pt-1">
         <AnimatePresence mode="wait">
           <motion.p key={label} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="text-sm text-muted-foreground">

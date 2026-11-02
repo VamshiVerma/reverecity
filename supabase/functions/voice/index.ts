@@ -39,6 +39,7 @@ function store(k: string, buf: Uint8Array) {
   (globalThis as any).EdgeRuntime?.waitUntil?.(p);
 }
 let remaining: string | null = null;
+let sttLeft: number | null = null;
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
@@ -51,6 +52,10 @@ Deno.serve(async (req) => {
   const mode = new URL(req.url).searchParams.get("mode");
 
   if (mode === "stt") {
+    // Live partial transcripts are a nice-to-have: skip them when Whisper's allowance is nearly used,
+    // so the final transcript of every question still goes through.
+    const isPartial = new URL(req.url).searchParams.get("partial") === "1";
+    if (isPartial && sttLeft != null && sttLeft < 6) return json({ error: "busy" }, 429);
     const type = req.headers.get("content-type") || "audio/webm";
     const buf = new Uint8Array(await req.arrayBuffer());
     if (buf.byteLength < 800) return json({ text: "" });
@@ -62,6 +67,9 @@ Deno.serve(async (req) => {
     form.append("language", "en");
     form.append("response_format", "json");
     const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { Authorization: `Bearer ${KEY}` }, body: form });
+    const left = Number(r.headers.get("x-ratelimit-remaining-requests"));
+    if (Number.isFinite(left)) sttLeft = left;
+    if (r.status === 429) return json({ error: "busy", fallback: true }, 429);
     if (!r.ok) return json({ error: "transcription failed", fallback: true }, 502);
     const j = await r.json();
     const text = String(j.text ?? "").trim();

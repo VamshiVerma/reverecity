@@ -138,11 +138,7 @@ function Hero({ s, today, homes, rb, wow }: { s: Snapshot | null; today: string 
       </div>
 
       <div className="relative mx-auto flex max-w-[1280px] flex-col px-4 pb-10 pt-5 md:min-h-[600px] md:px-7 md:pt-8">
-        <div className="flex items-center justify-between text-[13px] text-white/70">
-          <span className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-highlight-secondary opacity-70 motion-reduce:hidden" /><span className="relative h-2 w-2 rounded-full bg-highlight-secondary" /></span>
-            Live in Revere, Massachusetts
-          </span>
+        <div className="flex items-center justify-end text-[13px] text-white/70">
           <span className="tnum">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })}</span>
         </div>
 

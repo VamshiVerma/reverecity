@@ -41,14 +41,11 @@ const GROUPS: { label: string; links: { to: string; label: string; icon: LucideI
   },
 ];
 
-/** The mark: an R whose leg runs out into a wave, the shoreline Revere is known for. */
+/** The mark: Paul Revere's ride. A transparent silhouette used as a mask, so it takes the text colour in either theme. */
 export function RevereMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden>
-      <rect width="32" height="32" rx="9" fill="hsl(var(--brand))" />
-      <path d="M10 23V9h6.2c2.9 0 4.8 1.7 4.8 4.2 0 2.1-1.3 3.6-3.4 4L22 23" fill="none" stroke="hsl(var(--background))" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6 27c2.2-1.6 4.4-1.6 6.6 0s4.4 1.6 6.6 0 4.4-1.6 6.6 0" fill="none" stroke="hsl(var(--background))" strokeWidth="2" strokeLinecap="round" opacity=".6" />
-    </svg>
+    <span aria-hidden className={cn("inline-block shrink-0 bg-highlight-secondary", className)}
+      style={{ WebkitMaskImage: "url(/logo-rider.png)", maskImage: "url(/logo-rider.png)", WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center" }} />
   );
 }
 

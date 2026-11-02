@@ -39,9 +39,9 @@ export default function LiveTicker() {
       <AnimatePresence>
         {breaking && (
           <motion.div key={breaking.id} initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} transition={{ type: "spring", stiffness: 260, damping: 30 }} className="overflow-hidden">
-            <div className="flex items-stretch bg-destructive text-white">
+            <div className="flex items-stretch bg-[#FC734D] text-[#02070A]">
               <span className="flex shrink-0 items-center gap-2 px-4 text-[13px] font-semibold md:px-7">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-white motion-reduce:animate-none" /> Breaking
+                <span className="h-2 w-2 rounded-full bg-[#02070A]" /> Breaking
               </span>
               <button onClick={() => open(breaking)} className="min-w-0 flex-1 py-2.5 pr-2 text-left text-[14px] font-medium leading-snug md:text-[15px]">
                 <span className="opacity-80">{breaking.tag} · </span>{breaking.text}
@@ -57,8 +57,7 @@ export default function LiveTicker() {
       <div className="flex h-10 items-stretch border-b border-border bg-background">
         <div className="flex shrink-0 items-center gap-2 pl-4 pr-3 text-[13px] font-semibold text-foreground md:pl-7">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60 motion-reduce:hidden" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FC734D]" />
           </span>
           Live
         </div>

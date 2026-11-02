@@ -209,6 +209,40 @@ async function mbtaContext(q = "") {
   return { alerts, preds: preds.slice(0, 12), stations: stations.map(([, n]) => n), wantDir };
 }
 
+// ---------- the site's statistics pages (Census ACS, DESE, CDC), as residents see them ----------
+const PAGE_KEYS: [string, RegExp][] = [
+  ["demographics", /\b(population|residents?|how many people|people live|born|immigra|foreign|median age|how old|age of|race|racial|ethnic|hispanic|latino|white|black|asian|language|speak|households? that rent|renters?|homeowners?|own their)/i],
+  ["economic", /\b(income|poverty|poor|earn|wages?|make a year|jobs?|industr|occupation|unemploy|employ|work in|working residents|gini|inequality)/i],
+  ["transportation", /\b(commut|get to work|drive to work|drove|carpool|work from home|remote work|no car|without a car|cars? at home|vehicles? (at home|available)|trip to work|transit share)/i],
+  ["health", /\b(insur|uninsured|masshealth|medicaid|medicare|health|checkup|doctor|obes|diabet|smok|asthma|blood pressure|internet|broadband|disabilit)/i],
+  ["education", /\b(schools?|students?|graduat|mcas|enrol|english learners?|teachers?|class size|classes|attendance|absent|dropout|per pupil|per student|high school|rps\b)/i],
+];
+const INTENT_WORDS: Record<string, RegExp> = {
+  transit: /\b(train|blue line|bus|mbta|wonderland station)\b/i,
+  housing: /\b(home values?|home prices?|house prices?|rent is|rents?\b(?! their)|housing|mortgage|zillow)/i,
+  revenue: /\b(tax|taxes|revenue|excise|levy|free cash|stabilization|state aid|cherry sheet|receipts)\b/i,
+  budget: /\b(budget|spend|spending|fy ?20\d\d|appropriation|department|payroll)\b/i,
+  crime_trend: /\b(crime|safe|safety|police|arrests?)\b/i,
+  police_activity: /\b(police|calls?|incident|happen|arrest)\b/i,
+  weather: /\b(weather|rain|snow|forecast|temperature|umbrella|storm)\b/i,
+  civic: /\b(who is|who's|mayor|council|contact|phone|office|city hall)\b/i,
+  smalltalk: /^(hi|hello|hey|thanks|thank you)\b/i,
+};
+async function pageFacts(q: string) {
+  const pages = PAGE_KEYS.filter(([, re]) => re.test(q)).map(([p]) => p);
+  if (!pages.length) return [];
+  const { data } = await supabase.from("page_facts").select("page,title,url,body,captured_at").in("page", pages.slice(0, 2));
+  return (data || []) as { page: string; title: string; url: string; body: string; captured_at: string }[];
+}
+
+// The FY2027 revenue figures shown on the Revenue page (FY2027 Adopted Budget, pp. 228–242).
+const REVENUE_FACTS = `FY2027 REVENUE (FY2027 Adopted Budget):
+- General fund sources, FY2027 estimate: property taxes 47%, state aid (Cherry Sheet) 44%, local receipts 8%, water/sewer indirect costs 1% (p. 228).
+- Property tax levy: $133,198,908 projected for FY2027, up from about $126.5M in FY2026 (p. 237). Proposition 2½ allows a 2.5% yearly increase plus new growth.
+- Largest local receipts, FY2027 projected: motor vehicle excise about $7.5M; licenses and permits about $3.7M; hotel/room excise about $3.4M; investment income about $3.0M; fines and forfeits about $2.2M; meals tax about $1.25M (pp. 237–241).
+- Reserves: certified free cash $2,787,498 as of June 30, 2025 (p. 230); stabilization (rainy-day) fund about $12.79M projected for FY2027 (p. 231). By ordinance at least 15% of certified free cash goes to stabilization each year.
+- FY2018–FY2025 figures are actuals; FY2026–FY2027 are projections.`;
+
 // ---------- routing by meaning ----------
 type Intent = "civic" | "police_activity" | "crime_trend" | "budget" | "revenue" | "transit" | "weather" | "housing" | "smalltalk";
 async function route(emb: number[], q: string) {
@@ -220,7 +254,7 @@ async function route(emb: number[], q: string) {
   const chosen = new Set<Intent>();
   if (s1 >= 0.84) {
     chosen.add(t1 as Intent);
-    for (const [t, sc] of ranked.slice(1, 3)) if (sc >= 0.86 && sc >= s1 - 0.012) chosen.add(t as Intent);
+    for (const [t, sc] of ranked.slice(1, 3)) if (sc >= 0.9 && sc >= s1 - 0.012) chosen.add(t as Intent);
   }
   // Specific words that leave no doubt.
   const s = q.toLowerCase();
@@ -274,7 +308,7 @@ async function crimeTrend() {
 
 // ---------- LLM ----------
 const SYSTEM = `You are the Revere City assistant for residents of Revere, Massachusetts.
-Base answers on the CONTEXT provided: Revere's own data (police log, adopted budgets, city directory, live MBTA, weather, housing). Be warm, plain-spoken and specific: give numbers, dates, street names and times.
+Base answers on the CONTEXT provided: Revere's own data (police log, adopted budgets, city directory, live MBTA, weather, housing) and the site's statistics pages (Census ACS for people, income, commuting and insurance; DESE for schools; CDC PLACES for adult health). When you use a statistics page, say where it's from (e.g. "Census survey, 2020–2024") and compare with Massachusetts when the page does. Be warm, plain-spoken and specific: give numbers, dates, street names and times.
 - Every number must come from the CONTEXT. Never invent figures, names, phone numbers or dates.
 - Do not use outside knowledge. If the CONTEXT doesn't cover the question, say plainly that you don't have it and point to revere.org or the right office from the directory.
 - Write for residents of all ages, including older residents and people reading on a phone. Short sentences.
@@ -353,6 +387,10 @@ Deno.serve(async (req) => {
 
     const emb = Array.from(await embedder.run(q, { mean_pool: true, normalize: true }) as number[]);
     const r = await route(emb, q);
+    const pages = await pageFacts(q).catch(() => []);
+    // A statistics question ("median income", "graduation rate") resembles several topics by meaning;
+    // keep only the topics the question actually names.
+    if (pages.length) for (const i of [...r.intents]) if (!INTENT_WORDS[i]?.test(q)) r.intents.delete(i);
     const want = (i: Intent) => r.intents.has(i);
     const wantsMoney = want("budget") || want("revenue");
 
@@ -440,6 +478,12 @@ The log lists calls officers responded to, not confirmed crimes.`);
       sources.push({ kind: "police", label: "Revere PD public log", detail: `${fmtShort(trend.prevSince)}–${fmtShort(trend.latest)}`, url: trend.sources[trend.sources.length - 1] });
     }
 
+    for (const p of pages) {
+      ctx.push(`${p.title.toUpperCase()}: what the revere.city ${p.url} page shows (captured ${p.captured_at.slice(0, 10)}). Figures are Revere unless marked Massachusetts/MA or Suffolk County:\n${p.body}`);
+      sources.push({ kind: "data", label: p.title, detail: "revere.city", url: p.url });
+    }
+    if (want("revenue")) ctx.push(REVENUE_FACTS);
+
     const llmAvailable = !!(Deno.env.get("GROQ_API_KEY") || Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("GEMINI_API_KEY") || Deno.env.get("OPENAI_API_KEY"));
     if (llmAvailable) ctx.push(`ABOUT REVERE (verified background):
 - Revere Beach opened in 1896 as the first public beach in the United States; it is part of the state-run Revere Beach Reservation.
@@ -484,7 +528,14 @@ The log lists calls officers responded to, not confirmed crimes.`);
         parts.push(`- Source: *FY2027 Adopted Budget, p. 172*`);
         sources.push({ kind: "budget", label: "FY2027 Adopted Budget", detail: "p. 172 · School Department", url: `${R}#page=172` });
       }
-      if (want("revenue")) {
+      for (const p of pages) {
+        const words = q.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3 && !/^(what|which|does|have|revere|many|much|there|their|about|with|from|this|that|share|rate)$/.test(w));
+        const lines = p.body.split("\n").filter((l) => l.length > 40 && !/^\[Chart/.test(l));
+        const hit = lines.filter((l) => words.some((w) => l.toLowerCase().includes(w.slice(0, 6)))).slice(0, 3);
+        parts.push(`**${p.title}** (from the [${p.url.slice(1)} page](${p.url})):`);
+        (hit.length ? hit : lines.slice(0, 3)).forEach((l) => parts.push(`- ${l}`));
+      }
+      if (want("revenue") && INTENT_WORDS.revenue.test(q)) {
         const R = "https://files.aptuitivcdn.com/GB7r14nbKy-1182/docs/FY2027-Budget-Adopted.pdf";
         parts.push(`**Property taxes are Revere's biggest source of money: about $133.2M projected for FY2027**, up from $126.5M in FY2026 (FY2027 Adopted Budget, p. 237).`);
         parts.push(`- Where the general fund comes from (FY2027 estimate): property taxes 47%, state aid 44%, local receipts 8%, water/sewer indirect costs 1% (p. 228).`);

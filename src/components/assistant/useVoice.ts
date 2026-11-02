@@ -107,6 +107,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
   const [hearing, setHearing] = useState(false);
   const [interim, setInterim] = useState("");
   const [speaking, setSpeaking] = useState(false);
+  const [caption, setCaption] = useState("");
   const [level, setLevel] = useState<number[]>(() => Array(24).fill(0));
   const [error, setError] = useState<string | null>(null);
 
@@ -177,6 +178,18 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
       const tbuf = new Uint8Array(an.fftSize);
       const started = performance.now();
       let lastVoice = 0, spoke = false, raf = 0, stopped = false;
+      // Live words while you talk: re-transcribe what's been said so far every few seconds
+      // (Whisper's free tier is rate-limited, so at most a handful per question, never overlapping).
+      let partialAt = 0, partials = 0, partialBusy = false, partialOff = false;
+      const partial = () => {
+        if (partialBusy || partialOff || partials >= 6 || !chunks.length) return;
+        partialBusy = true; partials++;
+        const blob = new Blob(chunks, { type: recorder.mimeType || mime || "audio/webm" });
+        fetch(`${FN}?mode=stt&partial=1`, { method: "POST", headers: { "Content-Type": blob.type }, body: blob })
+          .then(async (r) => { if (r.status === 429) { partialOff = true; return; } const j = await r.json(); if (j.text && !stopped) setInterim(j.text); })
+          .catch(() => { partialOff = true; })
+          .finally(() => { partialBusy = false; });
+      };
 
       const finish = () => {
         if (stopped) return;
@@ -202,7 +215,8 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
         const rms = Math.sqrt(sum / tbuf.length);
         const t = performance.now();
         const loud = rms > 0.035;
-        if (loud) { lastVoice = t; if (!spoke) { spoke = true; setHearing(true); } }
+        if (loud) { lastVoice = t; if (!spoke) { spoke = true; setHearing(true); partialAt = t + 1200; } }
+        if (spoke && t >= partialAt) { partialAt = t + 2200; partial(); }
         setLevel(Array.from({ length: 24 }, (_, i) => Math.min(1, (buf[2 + i * 3] ?? 0) / 200)));
         // Stop after ~1.5s of quiet once they've spoken; give up after 7s of nothing; cap at 20s.
         if ((spoke && t - lastVoice > 1500) || (!spoke && t - started > 7000) || t - started > 20000) { finish(); return; }
@@ -220,12 +234,13 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
           const r = await fetch(`${FN}?mode=stt`, { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
           const j = await r.json();
           if (!r.ok) throw new Error(j.error || "transcription failed");
-          if (j.text) onFinalRef.current(j.text);
+          if (j.text) { setInterim(j.text); onFinalRef.current(j.text); }
           else setError("I couldn't make that out. Tap the mic and try again.");
         } catch {
           setError("Voice is having trouble right now. Tap the mic to try again, or type your question.");
         } finally {
           setTranscribing(false);
+          setInterim("");
         }
       };
       recorder.start(250);
@@ -251,14 +266,16 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
       const u = new SpeechSynthesisUtterance(p);
       if (voice) u.voice = voice;
       u.lang = voice?.lang || "en-US";
+      u.onstart = () => setCaption(p);
       if (i === parts.length - 1) u.onend = done;
       u.onerror = (ev: AnyRec) => { if (ev?.error !== "interrupted" && ev?.error !== "canceled") done(); };
       synth.speak(u);
     });
   }, []);
 
-  const play = (url: string, run: number) => new Promise<void>((resolve, reject) => {
+  const play = (url: string, run: number, words?: string) => new Promise<void>((resolve, reject) => {
     if (run !== speechRun.current) { URL.revokeObjectURL(url); resolve(); return; }
+    if (words) setCaption(words);
     const p = ensurePlayer();
     p.src = url;
     p.onended = () => { URL.revokeObjectURL(url); resolve(); };
@@ -286,7 +303,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
         const url = await next;
         if (i + 1 < parts.length) next = neuralSpeech(parts[i + 1]);
         if (run !== speechRun.current) { URL.revokeObjectURL(url); return; }
-        await play(url, run);
+        await play(url, run, parts[i]);
       }
       done();
     } catch {
@@ -299,8 +316,9 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     if (!text) { onDone?.(); return; }
     const run = ++speechRun.current;
     let finished = false;
-    const done = () => { if (finished || run !== speechRun.current) return; finished = true; setSpeaking(false); onDone?.(); };
+    const done = () => { if (finished || run !== speechRun.current) return; finished = true; setSpeaking(false); setCaption(""); onDone?.(); };
     setSpeaking(true);
+    setCaption(text);
 
     if (Date.now() < serverDownUntil) { speakFallback(text, run, done); return; }
 
@@ -321,7 +339,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     const b = rest ? fetchChunk(rest) : null;
     b?.catch(() => {});
     try {
-      await play(await a, run);
+      await play(await a, run, first);
     } catch {
       if (run !== speechRun.current) return;
       serverDownUntil = Date.now() + 5 * 60e3;
@@ -331,7 +349,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     }
     if (!b || run !== speechRun.current) { done(); return; }
     try {
-      await play(await b, run);
+      await play(await b, run, rest);
       done();
     } catch {
       if (run !== speechRun.current) return;
@@ -345,6 +363,7 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     try { player?.pause(); } catch { /* ignore */ }
     window.speechSynthesis?.cancel();
     setSpeaking(false);
+    setCaption("");
   }, []);
 
   useEffect(() => {
@@ -354,5 +373,5 @@ export function useVoice({ onFinal }: { onFinal: (text: string) => void }) {
     return () => { synth?.removeEventListener?.("voiceschanged", onVoices); cleanupRef.current(); synth?.cancel(); try { player?.pause(); } catch { /* ignore */ } };
   }, []);
 
-  return { supported, ttsSupported, listening, transcribing, hearing, interim, speaking, level, error, setError, startListening, stopListening, speak, stopSpeaking };
+  return { supported, ttsSupported, listening, transcribing, hearing, interim, speaking, caption, level, error, setError, startListening, stopListening, speak, stopSpeaking };
 }
