@@ -25,9 +25,16 @@ function headway(deps: Dep[] | undefined, day: Sched[] | undefined, now: number)
   let pts = up;
   if (pts.length < 3) pts = (day ?? []).filter((x) => x.at > now - 30 * 60e3 && x.at < now + 60 * 60e3).map((x) => x.at);
   if (pts.length < 2) return null;
-  const gaps = pts.slice(1).map((t, i) => t - pts[i]);
-  return Math.max(1, Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length / 60e3));
+  const gaps = pts.slice(1).map((t, i) => (t - pts[i]) / 60e3).filter((g) => g > 0.5);
+  if (!gaps.length) return null;
+  // The real spread of gaps, not just a rounded average (two directions often round to the same number).
+  const sorted = [...gaps].sort((a, b) => a - b);
+  const lo = Math.max(1, Math.round(sorted[0])), hi = Math.max(lo, Math.round(sorted[sorted.length - 1]));
+  const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  return { lo, hi, avg, n: pts.length, live: up.length >= 3 };
 }
+const gapText = (h: ReturnType<typeof headway>) => (!h ? "—" : h.lo === h.hi ? `every ${h.lo} min` : `every ${h.lo}–${h.hi} min`);
+const gapSub = (h: ReturnType<typeof headway>) => (!h ? "no trains to compare" : `avg ${h.avg.toFixed(1)} min · next ${h.n} ${h.live ? "live" : "scheduled"} trains`);
 
 /** How far live predictions are from the timetable for the same trips, in minutes (positive = late). */
 function lateness(deps: Pair<Dep[]> | null, day: Pair<Sched[]> | null, now: number) {
@@ -52,8 +59,8 @@ export function TrainStats({ running, inRevere, deps, day, now, atEnd }: { runni
   const lateText = late == null ? "—" : Math.abs(late.median) < 1.5 ? "On time" : late.median > 0 ? `${Math.round(late.median)} min late` : `${Math.round(-late.median)} min early`;
   const tiles = [
     { k: "Trains on the line", v: running ? String(running[0] + running[1]) : "…", sub: running ? `${running[0]} to Boston · ${running[1]} to Wonderland${inRevere != null ? ` · ${inRevere} in Revere now` : ""}` : "Counting…" },
-    { k: "To Boston", v: h0 ? `every ${h0} min` : "—", sub: "average gap between trains", dot: "bg-highlight-secondary" },
-    { k: atEnd ? "From Boston" : "To Wonderland", v: h1 ? `every ${h1} min` : "—", sub: "average gap between trains", dot: "bg-white" },
+    { k: "To Boston", v: gapText(h0), sub: gapSub(h0), dot: "bg-highlight-secondary" },
+    { k: atEnd ? "From Boston" : "To Wonderland", v: gapText(h1), sub: gapSub(h1), dot: "bg-white" },
     { k: "Vs. timetable", v: lateText, sub: late ? `from the next ${late.n} live trains` : "no live trains to compare yet" },
   ];
   return (
@@ -63,7 +70,7 @@ export function TrainStats({ running, inRevere, deps, day, now, atEnd }: { runni
           <div className="flex items-center gap-1.5 text-[12.5px] text-white/65">
             {t.dot && <span className={cn("h-2 w-2 rounded-full", t.dot)} />}{t.k}
           </div>
-          <div className="figure mt-1 text-[24px] font-semibold leading-tight tracking-[-0.02em] text-white md:text-[26px]">{t.v}</div>
+          <div className="figure mt-1 whitespace-nowrap text-[19px] font-semibold leading-tight tracking-[-0.02em] text-white sm:text-[24px] md:text-[26px]">{t.v}</div>
           <div className="mt-0.5 text-[12px] leading-snug text-white/50">{t.sub}</div>
         </div>
       ))}
