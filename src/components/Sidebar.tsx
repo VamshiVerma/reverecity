@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Mic, Moon, Search, Sun, X, Home, ShieldAlert, TrainFront, CloudSun, Landmark, Coins, House, Users, Briefcase, GraduationCap, HeartPulse, Bus, Shield, type LucideIcon } from "lucide-react";
+import { Moon, Sun, X, Home, ShieldAlert, TrainFront, CloudSun, Landmark, Coins, House, Users, Briefcase, GraduationCap, HeartPulse, Bus, Shield, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 interface SidebarProps {
@@ -61,7 +61,6 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   }, [isMobile, isOpen, toggleSidebar]);
 
   const { resolvedTheme, setTheme } = useTheme();
-  const ask = (voice = false) => { close(); window.dispatchEvent(new CustomEvent("revere:ask", { detail: voice ? { voice: true } : undefined })); };
   const close = () => { if (isMobile && isOpen) toggleSidebar(); };
 
   return (
@@ -85,16 +84,6 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
               <X className="h-5 w-5" />
             </button>
           )}
-        </div>
-
-        <div className="flex gap-2 px-3 pb-2">
-          <button onClick={() => ask()} className="flex h-10 flex-1 items-center gap-2 rounded-full bg-primary px-4 text-[14px] font-medium text-primary-foreground transition-transform active:scale-[0.98]">
-            <Search className="h-4 w-4" /> Ask Revere
-            <kbd className="ml-auto font-sans text-[12px] opacity-60">/</kbd>
-          </button>
-          <button onClick={() => ask(true)} aria-label="Ask by voice" className="grid h-10 w-10 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-accent">
-            <Mic className="h-[18px] w-[18px]" />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
