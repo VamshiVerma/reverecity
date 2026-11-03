@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import SplitFlap from "./SplitFlap";
 import { NextHour, TodaySummary, TrainStats, TrainsByHour } from "./TrainCharts";
 
 // The Blue Line from Wonderland (north end, in Revere) toward downtown Boston.
@@ -181,32 +180,14 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
           <span className="font-medium">{dir === 0 ? "To Boston" : atEnd ? "Arriving from Boston" : "To Wonderland"}</span>
           {first?.scheduled && <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/75">Timetable</span>}
         </div>
-        {/* Split-flap board: every character on its own flap, flipping as the countdown changes */}
-        <div className="mt-3 flex min-h-[64px] items-end gap-2.5">
-          {first && m != null && (
-            <span className="order-last ml-auto flex flex-col items-end gap-1 pb-0.5">
-              <span className="text-[11px] uppercase tracking-[0.12em] text-white/50">{first.scheduled ? "Scheduled" : "Departs"}</span>
-              <SplitFlap text={new Date(first.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).replace(/\s?[AP]M$/, "")}
-                tone="revere" label={`Departs at ${new Date(first.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}`} className="text-[20px] md:text-[24px]" />
-            </span>
-          )}
-          {deps == null ? <SplitFlap text="--" tone={dir === 0 ? "boston" : "revere"} label="Loading" className="text-[44px] md:text-[58px]" />
+        <div className="mt-2 flex min-h-[56px] items-baseline gap-2">
+          {deps == null ? <span className="figure text-[44px] leading-none text-white/50">…</span>
             : m == null ? <span className="self-center text-[17px] text-white/70">No more trains listed today</span>
-            : first.at - now <= 30_000 ? <SplitFlap text="NOW" tone={dir === 0 ? "boston" : "revere"} label="Boarding now" className="text-[44px] md:text-[58px]" />
-            : first.at - now < 180_000 && !first.scheduled ? <><SplitFlap text={clock(first.at, now)} tone={dir === 0 ? "boston" : "revere"} label={`${clock(first.at, now)} minutes`} className="text-[44px] md:text-[58px]" /><span className="pb-1 text-[15px] text-white/65">min</span></>
-            : <><SplitFlap text={String(m)} tone={dir === 0 ? "boston" : "revere"} label={`${m} minutes`} className="text-[44px] md:text-[58px]" /><span className="pb-1 text-[15px] text-white/65">min</span></>}
+            : first.at - now <= 30_000 ? <span className={cn("figure text-[44px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>Boarding</span>
+            : first.at - now < 180_000 && !first.scheduled ? <><span className={cn("figure text-[56px] leading-none tabular-nums", dir === 0 ? "text-highlight-secondary" : "text-white")}>{clock(first.at, now)}</span><span className="text-[16px] text-white/70">min</span></>
+            : <><span className={cn("figure text-[56px] leading-none", dir === 0 ? "text-highlight-secondary" : "text-white")}>{m}</span><span className="text-[16px] text-white/70">min</span></>}
         </div>
-        {ds.length > 1 && (
-          <div className="mt-3 flex items-center gap-2 text-[13px] text-white/60">
-            <span className="uppercase tracking-[0.08em]">Then</span>
-            {ds.slice(1, 3).map((d, i) => (
-              <span key={i} className="flex items-center gap-1">
-                <SplitFlap text={String(Math.max(1, minsTo(d.at, now)))} tone={dir === 0 ? "boston" : "revere"} label={`${Math.max(1, minsTo(d.at, now))} minutes`} className="text-[20px]" />
-                {i === 1 && <span>min</span>}
-              </span>
-            ))}
-          </div>
-        )}
+        {ds.length > 1 && <p className="mt-1 text-[14px] text-white/75">Then {ds.slice(1, 3).map((d) => Math.max(1, minsTo(d.at, now))).join(" and ")} min</p>}
         {first?.scheduled && <p className="mt-1 text-[12.5px] text-white/55">No live prediction yet, so this is the scheduled time.</p>}
       </div>
     );
