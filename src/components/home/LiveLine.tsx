@@ -248,7 +248,9 @@ export default function LiveLine({ alert }: { stations?: Station[]; alert?: stri
             <div className={cn(pill(t.dir), "relative", t.dir === 1 && "flex-row-reverse")}>
               {windows(t.dir)}<span className={cn("text-[10px] font-black", t.dir === 0 ? "text-[#2a0d04]" : "text-[#04121c]")}>{t.dir === 0 ? "›" : "‹"}</span>
             </div>
-            {nextTag[t.id] && <div className={cn("absolute", t.dir === 0 ? "-top-[24px] left-1/2 -translate-x-1/2" : "left-full top-1/2 ml-1.5 -translate-y-1/2", tagCls(t.dir))}>{nextTag[t.id]}</div>}
+            {nextTag[t.id] && <div className={cn("absolute", t.dir === 0
+              ? cn("-top-[24px]", t.pos < 0.6 ? "left-0" : t.pos > N - 1.6 ? "right-0" : "left-1/2 -translate-x-1/2")
+              : cn("top-1/2 -translate-y-1/2", t.pos > N - 1.8 ? "right-full mr-1.5" : "left-full ml-1.5"), tagCls(t.dir))}>{nextTag[t.id]}</div>}
           </div>
         ))}
       </div>

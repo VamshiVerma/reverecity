@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 function Flap({ ch, tone }: { ch: string; tone: "boston" | "revere" }) {
   const [cur, setCur] = useState(ch);
   const [prev, setPrev] = useState(ch);
-  const [flip, setFlip] = useState(0);
+  const [flip, setFlip] = useState(0); // >0 while a flip is playing
   const first = useRef(true);
 
   useEffect(() => {
@@ -16,24 +16,27 @@ function Flap({ ch, tone }: { ch: string; tone: "boston" | "revere" }) {
     setPrev(cur);
     setCur(ch);
     setFlip((n) => n + 1);
+    const t = setTimeout(() => setFlip(0), 620);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ch]);
 
-  const sep = ch === ":" || ch === " ";
-  if (sep) return <span className={cn("flap-sep", ch === " " && "w-[0.22em]")}>{ch === ":" ? ":" : ""}</span>;
+  if (ch === ":" || ch === " ") return <span className={cn("flap-sep", ch === " " && "w-[0.22em]")}>{ch === ":" ? ":" : ""}</span>;
 
   return (
     <span className={cn("flap", tone === "boston" ? "flap-boston" : "flap-revere")} aria-hidden>
-      {/* resting halves: new top, old bottom until the falling flap covers it */}
-      <span className="flap-half flap-top"><span>{cur}</span></span>
-      <span className="flap-half flap-bottom"><span>{flip ? prev : cur}</span></span>
+      {/* At rest: one clean character, no seam */}
+      {/* The face always sets the tile's width (letters like W are wider than digits); hidden while flipping */}
+      <span className={cn("flap-face", flip > 0 && "invisible")}>{cur}</span>
+      {/* Only while flipping: the halves fold over, then disappear */}
       {flip > 0 && (
         <span key={flip} className="contents">
+          <span className="flap-half flap-top"><span>{cur}</span></span>
+          <span className="flap-half flap-bottom"><span>{prev}</span></span>
           <span className="flap-half flap-top flap-fall"><span>{prev}</span></span>
           <span className="flap-half flap-bottom flap-rise"><span>{cur}</span></span>
         </span>
       )}
-      <span className="flap-hinge" />
     </span>
   );
 }
